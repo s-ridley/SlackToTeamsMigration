@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft Corporation.
+﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 using System.Globalization;
@@ -62,7 +62,7 @@ public class AuthenticationConfig {
     /// </summary>
     /// <param name="path">Path to the configuration json file</param>
     /// <returns>AuthenticationConfig read from the json file</returns>
-    public static AuthenticationConfig ReadFromJsonFile(string path) {
+    public static AuthenticationConfig? ReadFromJsonFile(string path) {
         IConfigurationRoot configuration;
 
         var builder = new ConfigurationBuilder()

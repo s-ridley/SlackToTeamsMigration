@@ -1,6 +1,8 @@
-// Copyright (c) Isak Viste. All rights reserved.
+﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Threading.Channels;
+using Microsoft.Graph.Models;
 using STMigration.Models;
 using STMigration.Utils;
 using STMMigration.Utils;
@@ -58,7 +60,7 @@ class Program {
             Console.Write("Do you want to load it? [Y/n] ");
             Console.ResetColor();
             input = Console.ReadLine();
-            if (string.IsNullOrEmpty(input) || input.ToLower() == "y" || input.ToLower() == "yes" || input.ToLower() == "true") {
+            if (string.IsNullOrEmpty(input) || input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase)) {
                 loadCurrentUserList = true;
             }
         }
@@ -75,7 +77,7 @@ class Program {
         input = Console.ReadLine();
 
         string? teamID = string.Empty;
-        if (string.IsNullOrEmpty(input) || input.ToLower() == "y" || input.ToLower() == "yes" || input.ToLower() == "true") {
+        if (string.IsNullOrEmpty(input) || input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase)) {
             // Create new migration team
             teamID = await CreateTeam(graphHelper);
 
@@ -95,7 +97,7 @@ class Program {
             Console.ResetColor();
             input = Console.ReadLine();
 
-            if (!string.IsNullOrEmpty(input) && (input.ToLower() == "y" || input.ToLower() == "yes" || input.ToLower() == "true")) {
+            if (!string.IsNullOrEmpty(input) && (input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase))) {
                 while (string.IsNullOrEmpty(teamID)) {
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
                     Console.WriteLine("Which team do you want to finish migrating?");
@@ -118,32 +120,38 @@ class Program {
         Console.ResetColor();
         input = Console.ReadLine();
 
-        if (string.IsNullOrEmpty(input) || input.ToLower() == "y" || input.ToLower() == "yes" || input.ToLower() == "true") {
+        if (string.IsNullOrEmpty(input) || input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase)) {
             // If we did not just migrate, we can ask the user to provide the team
             if (string.IsNullOrEmpty(teamID)) {
                 var teams = await ListJoinedTeamsAsync(graphHelper);
-                int index = 0;
-                Console.ForegroundColor = ConsoleColor.White;
-                foreach (var team in teams) {
-                    Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
-                    index++;
-                }
-                Console.ResetColor();
-
-                int choice;
-                do {
-                    choice = UserInputIndexOfList();
-                    if (choice < 0 || choice >= teams.Count) {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Count}");
-                        Console.ResetColor();
+                if (
+                    teams != null &&
+                    teams.Value != null
+                ) {
+                    int index = 0;
+                    Console.ForegroundColor = ConsoleColor.White;
+                    foreach (var team in teams.Value) {
+                        Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
+                        index++;
                     }
-                } while (choice < 0 || choice >= teams.Count);
+                    Console.ResetColor();
 
-                teamID = teams[choice].Id;
+                    int choice;
+                    do {
+                        choice = UserInputIndexOfList();
+                        if (choice < 0 || choice >= teams.Value.Count) {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Value.Count}");
+                            Console.ResetColor();
+                        }
+                    } while (choice < 0 || choice >= teams.Value.Count);
+
+                    teamID = teams.Value[choice].Id;
+                }
             }
-
-            await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, userList, teamID);
+            if (!string.IsNullOrEmpty(teamID)) {
+                await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, userList, teamID);
+            }
         }
 
         static int UserInputIndexOfList() {
@@ -160,13 +168,25 @@ class Program {
             return choice;
         }
     }
-    #endregion
 
     // If migration failed and you're left with a team stuck in migration mode, use this function!
     private static async Task FinishMigrating(GraphHelper graphHelper, string teamID) {
         Console.WriteLine();
-        foreach (var channel in await ListJoinedTeamsAsync(graphHelper, teamID)) {
-            await CompleteChannelMigrationAsync(graphHelper, teamID, channel.Id, channel.DisplayName);
+
+        var channels = await ListJoinedTeamsAsync(graphHelper, teamID);
+        if (
+            channels != null &&
+            channels.Value != null
+        ) {
+            foreach (var channel in channels.Value) {
+                if (
+                    channel != null &&
+                    channel.Id != null &&
+                    channel.DisplayName != null
+                ) {
+                    await CompleteChannelMigrationAsync(graphHelper, teamID, channel.Id, channel.DisplayName);
+                }
+            }
         }
 
         await CompleteTeamMigrationAsync(graphHelper, teamID);
@@ -177,7 +197,9 @@ class Program {
         Console.WriteLine("===========================================");
         Console.ResetColor();
     }
+    #endregion
 
+    #region Upload Handling
     static async Task UploadAttachmentsToTeam(GraphHelper graphHelper, string slackArchiveBasePath, List<STUser> userList, string teamID) {
         foreach (var dir in Directory.GetDirectories(slackArchiveBasePath)) {
             string channelID = string.Empty;
@@ -191,19 +213,22 @@ class Program {
 
             foreach (var file in MessageHandling.GetFilesForChannel(dir)) {
                 foreach (var message in MessageHandling.GetMessagesForDay(file, userList)) {
-                    if (message == null || !message.Attachments.Any()) {
-                        continue;
-                    }
+                    if (
+                        message != null &&
+                        message.Attachments != null &&
+                        message.Attachments.Count > 0
+                    ) {
+                        foreach (var attachment in message.Attachments) {
+                            await UploadFileToPath(graphHelper, teamID, channelName, attachment);
+                        }
 
-                    foreach (var attachment in message.Attachments) {
-                        await UploadFileToPath(graphHelper, teamID, channelName, attachment);
+                        await AddAttachmentsToMessage(graphHelper, teamID, channelID, message);
                     }
-
-                    //await AddAttachmentsToMessage(graphHelper, teamID, channelID, message);
                 }
             }
         }
     }
+    #endregion
 
     #region User Handling
     static async Task<List<STUser>> ScanAndHandleUsers(GraphHelper graphHelper, string slackArchiveBasePath, bool loadUserListInstead) {
@@ -229,7 +254,7 @@ class Program {
             Console.ResetColor();
             string? input = Console.ReadLine();
 
-            if (string.IsNullOrEmpty(input) || input.ToLower() == "y" || input.ToLower() == "yes" || input.ToLower() == "true") {
+            if (string.IsNullOrEmpty(input) || input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase)) {
                 // Fill in team IDs in the userList for the users based on their email
                 await PopulateTeamUsers(users);
                 Console.ForegroundColor = ConsoleColor.Blue;
@@ -282,7 +307,7 @@ class Program {
         Console.ResetColor();
         string? input = Console.ReadLine();
 
-        if (string.IsNullOrEmpty(input) || input.ToLower() == "y" || input.ToLower() == "yes" || input.ToLower() == "true") {
+        if (string.IsNullOrEmpty(input) || input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase)) {
             // Reload the userList from disk (used when user has made manual changes to the userList)
             List<STUser> users = UsersHelper.LoadUserList();
             Console.ForegroundColor = ConsoleColor.Blue;
@@ -467,10 +492,9 @@ class Program {
         return teamID;
     }
 
-    static async Task<Microsoft.Graph.IUserJoinedTeamsCollectionPage> ListJoinedTeamsAsync(GraphHelper graphHelper) {
+    static async Task<TeamCollectionResponse?> ListJoinedTeamsAsync(GraphHelper graphHelper) {
         try {
-            var joinedTeams = await graphHelper.GetJoinedTeamsAsync();
-            return joinedTeams;
+            return await graphHelper.GetJoinedTeamsAsync();
         } catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"Error getting user's teams: {ex.Message}");
@@ -479,10 +503,9 @@ class Program {
         }
     }
 
-    static async Task<Microsoft.Graph.ITeamChannelsCollectionPage> ListJoinedTeamsAsync(GraphHelper graphHelper, string teamID) {
+    static async Task<ChannelCollectionResponse?> ListJoinedTeamsAsync(GraphHelper graphHelper, string teamID) {
         try {
-            var channels = await graphHelper.GetTeamsChannelsAsync(teamID);
-            return channels;
+            return await graphHelper.GetTeamsChannelsAsync(teamID);
         } catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"Error getting teams channels: {ex.Message}");
@@ -495,7 +518,7 @@ class Program {
         string channelID = string.Empty;
 
         try {
-            channelID = await graphHelper.GetChannelByNameAsync(teamID, channelName);
+            channelID = await graphHelper.GetChannelByNameAsync(teamID, channelName, new ArgumentNullException("chanelID", "cannot be null"));
         } catch (Exception ex) {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"Error getting Channel {channelName}: {ex.Message}");

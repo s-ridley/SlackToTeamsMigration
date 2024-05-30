@@ -57,7 +57,7 @@ public class MessageHandling {
         var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
 
         // Simple text, get it directly from text field
-        if (richTextArray == null || !richTextArray.Any()) {
+        if (richTextArray == null || richTextArray.Count == 0) {
             string? text = obj.SelectToken("text")?.ToString();
             return text ?? string.Empty;
         }
@@ -194,7 +194,7 @@ public class MessageHandling {
     static List<STAttachment> GetFormattedAttachments(JObject obj) {
         var attachmentsArray = obj.SelectTokens("files[*]").ToList();
 
-        List<STAttachment> formattedAttachments = new();
+        List<STAttachment> formattedAttachments = [];
         int index = 0;
         foreach (var attachment in attachmentsArray) {
             string? url = attachment.SelectToken("url_private_download")?.ToString();

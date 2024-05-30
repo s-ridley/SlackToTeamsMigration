@@ -11,7 +11,7 @@ namespace STMMigration.Utils;
 
 public class UsersHelper {
     public static List<STUser> ScanUsersFromSlack(string combinedPath) {
-        List<STUser> simpleUserList = new();
+        List<STUser> simpleUserList = [];
 
         using (FileStream fs = new(combinedPath, FileMode.Open, FileAccess.Read))
         using (StreamReader sr = new(fs))
@@ -57,9 +57,14 @@ public class UsersHelper {
 
             try {
                 var teamUsers = await graphHelper.GetTeamUser(user.Email);
-                string? teamID = teamUsers?.FirstOrDefault()?.Id;
+                if (
+                    teamUsers != null &&
+                    teamUsers.Value != null
+                ) {
+                    string? teamID = teamUsers.Value.FirstOrDefault()?.Id;
 
-                user.SetTeamUserID(teamID);
+                    user.SetTeamUserID(teamID);
+                }
             } catch (Exception) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error getting team user by email: {user.Email}");
@@ -97,7 +102,7 @@ public class UsersHelper {
             JsonSerializer serializer = new();
             var userList = serializer.Deserialize(file, typeof(List<STUser>));
 
-            return (List<STUser>?)userList ?? new();
+            return (List<STUser>?)userList ?? [];
         } catch (FileNotFoundException ex) {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine("No existing userList!");
@@ -109,6 +114,6 @@ public class UsersHelper {
             Console.ResetColor();
         }
 
-        return new();
+        return [];
     }
 }

@@ -1,4 +1,4 @@
-using System.Net.Http.Headers;
+﻿using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 
 namespace STMigration;
@@ -6,16 +6,12 @@ namespace STMigration;
 /// <summary>
 /// Helper class to call a protected API and process its result
 /// </summary>
-public class ProtectedApiCallHelper {
-    protected HttpClient HTTPClient { get; private set; }
-
-    /// <summary>
-    /// Constructor
-    /// </summary>
-    /// <param name="httpClient">HttpClient used to call the protected API</param>
-    public ProtectedApiCallHelper(HttpClient httpClient) {
-        HTTPClient = httpClient;
-    }
+/// <remarks>
+/// Constructor
+/// </remarks>
+/// <param name="httpClient">HttpClient used to call the protected API</param>
+public class ProtectedApiCallHelper(HttpClient httpClient) {
+    protected HttpClient HTTPClient { get; private set; } = httpClient;
 
     /// <summary>
     /// Calls the protected web API with a get async and returns the result

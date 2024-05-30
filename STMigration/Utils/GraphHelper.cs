@@ -1,4 +1,4 @@
-// Copyright (c) Isak Viste. All rights reserved.
+﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
 using System.Net.Http.Headers;
@@ -7,13 +7,15 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Azure.Identity;
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
 using Microsoft.Identity.Client;
+using Microsoft.Kiota.Abstractions;
 using Newtonsoft.Json;
 using STMigration.Models;
 
 namespace STMigration.Utils;
 
-public class GraphHelper {
+public partial class GraphHelper {
     /*
     ** APP AUTHENTICATION
     */
@@ -36,7 +38,7 @@ public class GraphHelper {
                     .WithClientSecret(config.ClientSecret)
                     .WithAuthority(new Uri(config.Authority))
                     .Build();
-        Scopes = new string[] { $"{config.ApiUrl}.default" }; // Generates a scope -> "https://graph.microsoft.com/.default"
+        Scopes = [$"{config.ApiUrl}.default"]; // Generates a scope -> "https://graph.microsoft.com/.default"
 
         DeviceCodeCredential = new DeviceCodeCredential((info, cancel) => {
             // Display the device code message to
@@ -61,9 +63,9 @@ public class GraphHelper {
             new AuthenticationHeaderValue("Bearer", result.AccessToken);
     }));
 
-    private static readonly string[] s_scopes = new string[] {
+    private static readonly string[] s_scopes = [
         "User.Read", "Group.ReadWrite.All"
-    };
+    ];
     private GraphServiceClient UserGraphClient => new(DeviceCodeCredential, s_scopes);
 
     #region API Handling
@@ -115,14 +117,10 @@ public class GraphHelper {
     #endregion
 
     #region Team Handling
-    public async Task<IUserJoinedTeamsCollectionPage> GetJoinedTeamsAsync() {
-        return await GraphClient.Users[Config.OwnerUserId].JoinedTeams
-            .Request()
-            .Select(t => new {
-                t.Id,
-                t.DisplayName
-            })
-            .GetAsync();
+    public async Task<TeamCollectionResponse?> GetJoinedTeamsAsync() {
+        return await GraphClient.Users[Config.OwnerUserId].JoinedTeams.GetAsync(requestConfiguration => {
+            requestConfiguration.QueryParameters.Select = ["id", "displayName"];
+        });
     }
 
     public async Task<string> CreateTeamAsync(string dataFile) {
@@ -130,18 +128,15 @@ public class GraphHelper {
         string json = reader.ReadToEnd();
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var response = await PostToMSGraph("teams", content);
-
-        if (response == null) {
-            throw new ArgumentNullException("response", "cannot be null");
-        }
+        var response = await PostToMSGraph("teams", content) ?? throw new ArgumentNullException("response", "cannot be null");
 
         if (response.Headers.TryGetValues("Location", out IEnumerable<string>? values)) {
             Regex regex = new(@"\'([^'']+)\'*");
             return regex.Match(values.First()).Groups[1].ToString();
         }
 
-        throw new ArgumentNullException("response", "must contain Location with team id");
+        ArgumentNullException argumentNullException = new ArgumentNullException("response", "must contain Location with team id");
+        throw argumentNullException;
     }
 
     public async Task CompleteTeamMigrationAsync(string teamID) {
@@ -151,29 +146,23 @@ public class GraphHelper {
 
         // Add owner to the new team
         var ownerUser = new AadUserConversationMember {
-            Roles = new List<string>() {
+            Roles = [
                 "owner"
-            },
+            ],
             AdditionalData = new Dictionary<string, object>() {
                 {"user@odata.bind", $"https://graph.microsoft.com/v1.0/users('{Config.OwnerUserId}')"}
             }
         };
 
-        await GraphClient.Teams[teamID].Members
-            .Request()
-            .AddAsync(ownerUser);
+        await GraphClient.Teams[teamID].Members.PostAsync(ownerUser);
     }
     #endregion
 
     #region Channel Handling
-    public async Task<ITeamChannelsCollectionPage> GetTeamsChannelsAsync(string teamID) {
-        return await GraphClient.Teams[teamID].Channels
-            .Request()
-            .Select(c => new {
-                c.Id,
-                c.DisplayName,
-            })
-            .GetAsync();
+    public async Task<ChannelCollectionResponse?> GetTeamsChannelsAsync(string teamID) {
+        return await GraphClient.Teams[teamID].Channels.GetAsync(requestConfiguration => {
+            requestConfiguration.QueryParameters.Select = new string[] { "id", "displayName" };
+        });
     }
 
     public static readonly string CHANNEL_CREATION_DATE = "2019-09-17T11:22:17.067Z";
@@ -185,19 +174,9 @@ public class GraphHelper {
         json = json.Replace("}", ", \"@microsoft.graph.channelCreationMode\": \"migration\"}");
 
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var response = await PostToMSGraph($"teams/{teamID}/channels", content);
-
-        if (response == null) {
-            throw new ArgumentNullException("response", "cannot be null");
-        }
-
+        var response = await PostToMSGraph($"teams/{teamID}/channels", content) ?? throw new ArgumentNullException("response", "cannot be null");
         string responseContent = await response.Content.ReadAsStringAsync();
-        JsonNode? jsonNode = JsonNode.Parse(responseContent);
-
-        if (jsonNode == null) {
-            throw new ArgumentNullException("jsonNode", "cannot be null or empty");
-        }
-
+        JsonNode? jsonNode = JsonNode.Parse(responseContent) ?? throw new ArgumentNullException("jsonNode", "cannot be null or empty");
         string? channelID = jsonNode["id"]?.GetValue<string>();
 
         if (string.IsNullOrEmpty(channelID)) {
@@ -215,71 +194,56 @@ public class GraphHelper {
     #endregion
 
     #region Getters
-    public async Task<IGraphServiceUsersCollectionPage> GetTeamUser(string userEmail) {
-        return await GraphClient.Users
-        .Request()
-        .Filter($"mail eq '{userEmail}'")
-        .Select(u => new {
-            u.Id,
-            u.Mail
-        })
-        .GetAsync();
+    public async Task<UserCollectionResponse?> GetTeamUser(string userEmail) {
+        return await GraphClient.Users.GetAsync(requestConfiguration => {
+            requestConfiguration.QueryParameters.Select = ["id", "mail"];
+            requestConfiguration.QueryParameters.Filter = $"mail eq '{userEmail}'";
+        });
     }
 
-    public async Task<string> GetChannelByNameAsync(string teamID, string channelName) {
-        var channels = await GraphClient.Teams[teamID].Channels
-            .Request()
-            .Select(c => new {
-                // Only request specific properties
-                c.DisplayName,
-                c.Id,
-            })
-            .GetAsync();
+    public async Task<string> GetChannelByNameAsync(string teamID, string channelName, Exception argumentNullException) {
+        var channels = await GraphClient.Teams[teamID].Channels.GetAsync(requestConfiguration => {
+            requestConfiguration.QueryParameters.Select = ["displayName", "id"];
+        });
 
         string channelID = string.Empty;
-        foreach (var ch in channels) {
-            if (ch.DisplayName.ToLower() == channelName.ToLower()) {
-                channelID = ch.Id;
-                break;
+        if (
+            channels != null &&
+            channels.Value != null
+        ) {
+            foreach (var ch in channels.Value) {
+                if (
+                    ch.DisplayName != null &&
+                    ch.DisplayName.Equals(channelName, StringComparison.CurrentCultureIgnoreCase) &&
+                    ch.Id != null
+                ) {
+                    channelID = ch.Id;
+                    break;
+                }
             }
         }
 
-        if (string.IsNullOrEmpty(channelID)) {
-            throw new ArgumentNullException("chanelID", "cannot be null");
+        if (!string.IsNullOrEmpty(channelID)) {
+            return channelID;
         }
 
-        var channel = await GraphClient.Teams[teamID].Channels[channelID]
-            .Request()
-            .Select(c => new {
-                c.Id,
-            })
-            .GetAsync();
-
-        if (string.IsNullOrEmpty(channel.Id)) {
-            throw new ArgumentNullException("channel", "must contain ID");
-        }
-
-        return channel.Id;
+        throw argumentNullException;
     }
     #endregion
 
     #region Sending Messages
-    public async Task<ChatMessage> SendMessageToChannelThreadAsync(string teamID, string channelID, string threadID, STMessage message) {
+    public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamID, string channelID, string threadID, STMessage message) {
         var msg = MessageToSend(message);
 
         // Send the message
-        return await GraphClient.Teams[teamID].Channels[channelID].Messages[threadID].Replies
-            .Request()
-            .AddAsync(msg);
+        return await GraphClient.Teams[teamID].Channels[channelID].Messages[threadID].Replies.PostAsync(msg);
     }
 
-    public async Task<ChatMessage> SendMessageToChannelAsync(string teamID, string channelID, STMessage message) {
+    public async Task<ChatMessage?> SendMessageToChannelAsync(string teamID, string channelID, STMessage message) {
         var msg = MessageToSend(message);
 
         // Send the message
-        return await GraphClient.Teams[teamID].Channels[channelID].Messages
-            .Request()
-            .AddAsync(msg);
+        return await GraphClient.Teams[teamID].Channels[channelID].Messages.PostAsync(msg);
     }
 
     private static ChatMessage MessageToSend(STMessage message) {
@@ -314,10 +278,12 @@ public class GraphHelper {
             }
         };
     }
+
+    private static readonly Regex s_regex = MyRegex();
     #endregion
 
     #region Upload Files
-    private static readonly Regex s_regexGUID = new(@"\{([^{}]+)\}*");
+    private static readonly Regex s_regexGUID = s_regex;
 
     private static readonly DriveItemUploadableProperties s_uploadSettings = new() {
         AdditionalData = new Dictionary<string, object>
@@ -358,14 +324,22 @@ public class GraphHelper {
         try {
             // Upload the file
             var uploadResult = await fileUploadTask.UploadAsync(progress);
-
-            if (!uploadResult.UploadSucceeded) {
-                Console.WriteLine($"Upload failed: {attachment.SlackURL}");
+            if (uploadResult != null) {
+                if (!uploadResult.UploadSucceeded) {
+                    Console.WriteLine($"Upload failed: {attachment.SlackURL}");
+                }
+                if (uploadResult.ItemResponse != null) {
+                    if (uploadResult.ItemResponse.WebUrl != null) {
+                        attachment.TeamsURL = uploadResult.ItemResponse.WebUrl;
+                    }
+                    if (uploadResult.ItemResponse.ETag != null) {
+                        attachment.TeamsGUID = s_regexGUID.Match(uploadResult.ItemResponse.ETag).Groups[1].ToString();
+                    }
+                    if (uploadResult.ItemResponse.Name != null) {
+                        attachment.Name = uploadResult.ItemResponse.Name;
+                    }
+                }
             }
-
-            attachment.TeamsURL = uploadResult.ItemResponse.WebUrl;
-            attachment.TeamsGUID = s_regexGUID.Match(uploadResult.ItemResponse.ETag).Groups[1].ToString();
-            attachment.Name = uploadResult.ItemResponse.Name;
         } catch (ServiceException ex) {
             Console.WriteLine($"Error uploading: {ex}");
         }
@@ -391,8 +365,10 @@ public class GraphHelper {
             Attachments = attachments,
         };
 
-        _ = await UserGraphClient.Teams[teamID].Channels[channelID].Messages[message.TeamID].Replies
-            .Request().AddAsync(msg);
+        _ = await UserGraphClient.Teams[teamID].Channels[channelID].Messages[message.TeamID].Replies.PostAsync(msg);
     }
+
+    [GeneratedRegex(@"\{([^{}]+)\}*")]
+    private static partial Regex MyRegex();
     #endregion
 }
