@@ -11,7 +11,12 @@ namespace STMigration;
 /// </remarks>
 /// <param name="httpClient">HttpClient used to call the protected API</param>
 public class ProtectedApiCallHelper(HttpClient httpClient) {
+    #region Method - Properties
+
     protected HttpClient HTTPClient { get; private set; } = httpClient;
+
+    #endregion
+    #region Method - GetFormattedAttachments
 
     /// <summary>
     /// Calls the protected web API with a get async and returns the result
@@ -47,6 +52,9 @@ public class ProtectedApiCallHelper(HttpClient httpClient) {
         return null;
     }
 
+    #endregion
+    #region Method - PostWebApiCall
+
     /// <summary>
     /// Calls the protected web API with a post async and returns the result
     /// </summary>
@@ -80,4 +88,6 @@ public class ProtectedApiCallHelper(HttpClient httpClient) {
         Console.ResetColor();
         return null;
     }
+
+    #endregion
 }

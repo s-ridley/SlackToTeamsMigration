@@ -10,6 +10,13 @@ using STMigration.Utils;
 namespace STMMigration.Utils;
 
 public class UsersHelper {
+    #region Fields
+
+    public static readonly string USER_LIST_FILE = "Data/userList.json";
+
+    #endregion
+    #region Method - ScanUsersFromSlack
+
     public static List<STUser> ScanUsersFromSlack(string combinedPath) {
         List<STUser> simpleUserList = [];
 
@@ -49,6 +56,9 @@ public class UsersHelper {
         return simpleUserList;
     }
 
+    #endregion
+    #region Method - PopulateTeamsUsers
+
     public static async Task PopulateTeamsUsers(GraphHelper graphHelper, List<STUser> userList) {
         foreach (STUser user in userList) {
             if (string.IsNullOrEmpty(user.Email)) {
@@ -75,7 +85,9 @@ public class UsersHelper {
         }
     }
 
-    public static readonly string USER_LIST_FILE = "Data/userList.json";
+    #endregion
+    #region Method - StoreUserList
+
     public static void StoreUserList(List<STUser> userList) {
         using StreamWriter file = File.CreateText(USER_LIST_FILE);
 
@@ -91,9 +103,15 @@ public class UsersHelper {
         Console.ResetColor();
     }
 
+    #endregion
+    #region Method - UserListExists
+
     public static bool UserListExists() {
         return File.Exists(USER_LIST_FILE);
     }
+
+    #endregion
+    #region Method - LoadUserList
 
     public static List<STUser> LoadUserList() {
         try {
@@ -116,4 +134,6 @@ public class UsersHelper {
 
         return [];
     }
+
+    #endregion
 }

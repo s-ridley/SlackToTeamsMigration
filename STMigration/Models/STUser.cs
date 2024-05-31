@@ -3,25 +3,53 @@
 
 using Newtonsoft.Json;
 
-namespace STMigration.Models;
+#pragma warning disable IDE0290
 
-[method: JsonConstructor]
-public class STUser(string slackUserID, string? teamsUserID, string displayName, string? email, bool isBot) {
-    public string DisplayName { get; private set; } = displayName;
-    public string? Email { get; private set; } = email;
+namespace STMigration.Models {
+    public class STUser {
+        #region Fields
 
-    public string SlackUserID { get; private set; } = slackUserID;
-    public string TeamsUserID { get; private set; } = teamsUserID ?? string.Empty;
+        public static readonly STUser SLACK_BOT = BotUser("USLACKBOT", "Slack Bot");
 
-    public bool IsBot { get; set; } = isBot;
+        #endregion
+        #region Properties
 
-    public static STUser BotUser(string slackUserID, string displayName) {
-        return new STUser(slackUserID, string.Empty, displayName, string.Empty, true);
-    }
+        public string DisplayName { get; private set; }
+        public string? Email { get; private set; }
+        public string SlackUserID { get; private set; }
+        public string TeamsUserID { get; private set; }
+        public bool IsBot { get; set; } = false;
 
-    public static readonly STUser SLACK_BOT = BotUser("USLACKBOT", "Slack Bot");
+        #endregion
+        #region Constructors
 
-    public void SetTeamUserID(string? id) {
-        TeamsUserID = id ?? string.Empty;
+        [JsonConstructor]
+        public STUser(string slackUserID, string? teamsUserID, string displayName, string? email, bool isBot) {
+            SlackUserID = slackUserID;
+            TeamsUserID = teamsUserID ?? string.Empty;
+
+            DisplayName = displayName;
+            Email = email;
+            IsBot = isBot;
+        }
+
+        public STUser(string slackUserID, string displayName, string? email, bool isBot) : this(slackUserID, string.Empty, displayName, email, isBot) {
+        }
+
+        #endregion
+        #region Method - BotUser
+
+        public static STUser BotUser(string slackUserID, string displayName) {
+            return new STUser(slackUserID, displayName, string.Empty, true);
+        }
+
+        #endregion
+        #region Method - SetTeamUserID
+
+        public void SetTeamUserID(string? id) {
+            TeamsUserID = id ?? string.Empty;
+        }
+
+        #endregion
     }
 }

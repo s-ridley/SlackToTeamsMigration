@@ -10,11 +10,16 @@ using STMigration.Models;
 namespace STMigration.Utils;
 
 public class MessageHandling {
+    #region Method - GetFilesForChannel
+
     public static IEnumerable<string> GetFilesForChannel(string channelPath) {
         foreach (var file in Directory.GetFiles(channelPath)) {
             yield return file;
         }
     }
+
+    #endregion
+    #region Method - GetMessagesForDay
 
     public static IEnumerable<STMessage> GetMessagesForDay(string path, List<STUser> users) {
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -53,6 +58,9 @@ public class MessageHandling {
         }
     }
 
+    #endregion
+    #region Method - GetFormattedText
+
     static string GetFormattedText(JObject obj, List<STUser> userList) {
         var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
 
@@ -67,6 +75,9 @@ public class MessageHandling {
 
         return formattedText.ToString();
     }
+
+    #endregion
+    #region Method - FormatText
 
     static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<STUser> userList) {
         string? text;
@@ -164,6 +175,9 @@ public class MessageHandling {
         }
     }
 
+    #endregion
+    #region Method - FindMessageSender
+
     static STUser? FindMessageSender(JObject obj, List<STUser> userList) {
         var userID = obj.SelectToken("user")?.ToString();
 
@@ -178,6 +192,9 @@ public class MessageHandling {
         return null;
     }
 
+    #endregion
+    #region Method - DisplayNameFromUserID
+
     static string DisplayNameFromUserID(List<STUser> userList, string userID) {
         if (userID != "USLACKBOT") {
             var simpleUser = userList.FirstOrDefault(user => user.SlackUserID == userID);
@@ -190,6 +207,9 @@ public class MessageHandling {
 
         return "SlackBot";
     }
+
+    #endregion
+    #region Method - GetFormattedAttachments
 
     static List<STAttachment> GetFormattedAttachments(JObject obj) {
         var attachmentsArray = obj.SelectTokens("files[*]").ToList();
@@ -215,4 +235,6 @@ public class MessageHandling {
 
         return formattedAttachments;
     }
+
+    #endregion
 }

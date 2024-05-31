@@ -13,6 +13,8 @@ namespace STMigration.Utils;
 /// match the application registration done in the Azure portal
 /// </summary>
 public class AuthenticationConfig {
+    #region Properties
+
     /// <summary>
     /// instance of Azure AD, for example public Azure or a Sovereign cloud (Azure China, Germany, US government, etc ...)
     /// </summary>
@@ -57,6 +59,11 @@ public class AuthenticationConfig {
 
     public string OwnerUserId { get; set; }
 
+    public string SlackExportDir { get; set; }
+
+    #endregion
+    #region Method - ReadFromJsonFile
+
     /// <summary>
     /// Reads the configuration from a json file
     /// </summary>
@@ -72,5 +79,7 @@ public class AuthenticationConfig {
         configuration = builder.Build();
         return configuration.Get<AuthenticationConfig>();
     }
+
+    #endregion
 }
 
