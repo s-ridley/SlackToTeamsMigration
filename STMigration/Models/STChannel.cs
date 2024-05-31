@@ -1,30 +1,37 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-#pragma warning disable IDE1006
+using Newtonsoft.Json;
+using Newtonsoft.Json.Converters;
+using System.Runtime.Serialization;
 
 namespace STMigration.Models {
+    [DataContract]
+    [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
     public class STChannel {
         #region Properties
 
-        public string displayName { get; set; }
-        public string description { get; set; }
-        public string createdDateTime { get; set; }
-        public string membershipType { get; set; } = "standard";
+        [DataMember(IsRequired = true, Name = "displayName"), JsonProperty]
+        public string DisplayName { get; set; }
+
+        [DataMember(IsRequired = false, Name = "description"), JsonProperty]
+        public string Description { get; set; } = "";
+
+        [DataMember(IsRequired = false, Name = "createdDateTime"),
+            JsonProperty,
+            JsonConverter(typeof(IsoDateTimeConverter))]
+        public DateTime CreatedDateTime { get; set; } = DateTime.UtcNow;
+
+        [DataMember(IsRequired = true, Name = "membershipType"), JsonProperty]
+        public string MembershipType { get; set; } = "standard";
 
         #endregion
         #region Constructors
 
-        public STChannel(string displayName, string description, string createdDateTime) {
-            this.displayName = displayName;
-            this.description = description;
-            this.createdDateTime = createdDateTime;
-        }
-
-        public STChannel(string dirName, string createdDateTime) {
-            displayName = dirName;
-            description = $"Description for {dirName}";
-            this.createdDateTime = createdDateTime;
+        public STChannel(string displayName, string description, DateTime createdDateTime) {
+            DisplayName = displayName;
+            Description = description;
+            CreatedDateTime = createdDateTime;
         }
 
         #endregion

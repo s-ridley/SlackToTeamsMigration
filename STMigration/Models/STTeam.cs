@@ -12,18 +12,19 @@ namespace STMigration.Models {
         public string DisplayName { get; private set; }
 
         [DataMember(IsRequired = false, Name = "description"), JsonProperty]
-        public string? Description { get; private set; }
+        public string Description { get; private set; } = "";
 
         [DataMember(IsRequired = false, Name = "createdDateTime"),
             JsonProperty,
             JsonConverter(typeof(IsoDateTimeConverter))]
-        public DateTime? CreatedDateTime { get; private set; }
+        public DateTime CreatedDateTime { get; private set; } = DateTime.UtcNow;
 
         #endregion
         #region Constructors
 
-        public STTeam(string displayName, string? description, DateTime? createdDateTime) {
+        public STTeam(string displayName, string description, DateTime createdDateTime) {
             DisplayName = displayName;
+
             Description = description;
             CreatedDateTime = createdDateTime;
         }
