@@ -105,7 +105,7 @@ namespace STMigration.Utils {
         }
 
         #endregion
-        #region Method - GetFromMSGraph
+        #region Method - PostToMSGraph
 
         public async Task<HttpResponseMessage?> PostToMSGraph(string apiCall, HttpContent content) {
             AuthenticationResult? result = null;
@@ -146,54 +146,43 @@ namespace STMigration.Utils {
         #endregion
         #region Method - CreateTeamAsync
 
-        public async Task<string> CreateTeamAsync(string dataFile) {
-            using StreamReader reader = new(dataFile);
-            string json = reader.ReadToEnd();
+        public async Task<string> CreateTeamAsync(string json) {
+            string? teamId = string.Empty;
 
-            string? teamID = null;
+            if (!string.IsNullOrWhiteSpace(json)) {
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            // Get the team name
-            STTeam? team = JsonConvert.DeserializeObject<STTeam>(json);
-
-            if (team != null) {
-                // First check if the team exists
-                teamID = await GetTeamByNameAsync(team.DisplayName);
-
-                //TODO : Uncomment
-                //if (string.IsNullOrWhiteSpace(teamID)) {
-                //    var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                //    if (content != null) {
-                //        var response = await PostToMSGraph("teams", content);
-
-                //        if (response != null) {
-                //            if (response.Headers.TryGetValues("Location", out IEnumerable<string>? values)) {
-                //                Regex regex = GoupNameRegex();
-                //                teamID = regex.Match(values.First()).Groups[1].ToString();
-                //            }
-                //        } else {
-                //            throw new Exception("CreateTeamAsync - response is null");
-                //        }
-                //    } else {
-                //        throw new Exception("CreateTeamAsync - content is null");
-                //    }
-                //}
+                if (content != null) {
+                    var response = await PostToMSGraph("teams", content);
+                    if (response != null) {
+                        if (response.Headers.TryGetValues("Location", out IEnumerable<string>? values)) {
+                            Regex regex = GoupNameRegex();
+                            if (values != null) {
+                                teamId = regex.Match(values.First()).Groups[1].ToString();
+                            }
+                        }
+                    } else {
+                        throw new Exception("CreateTeamAsync - response is null");
+                    }
+                } else {
+                    throw new Exception("CreateTeamAsync - content is null");
+                }
             } else {
                 throw new Exception("CreateTeamAsync - team json is corrupt");
             }
 
-            if (string.IsNullOrEmpty(teamID)) {
-                throw new Exception($"CreateTeamAsync - teamID is null");
+            if (string.IsNullOrEmpty(teamId)) {
+                throw new Exception($"CreateTeamAsync - teamId is null");
             }
 
-            return teamID;
+            return teamId;
         }
 
         #endregion
         #region Method - CompleteTeamMigrationAsync
 
-        public async Task CompleteTeamMigrationAsync(string teamID) {
-            var apiCall = $"teams/{teamID}/completeMigration";
+        public async Task CompleteTeamMigrationAsync(string teamId) {
+            var apiCall = $"teams/{teamId}/completeMigration";
 
             _ = await PostToMSGraph(apiCall, new StringContent(""));
 
@@ -207,7 +196,7 @@ namespace STMigration.Utils {
             }
             };
 
-            await GraphClient.Teams[teamID].Members.PostAsync(ownerUser);
+            await GraphClient.Teams[teamId].Members.PostAsync(ownerUser);
         }
 
         #endregion
@@ -227,7 +216,7 @@ namespace STMigration.Utils {
         #region Method - CreateChannelAsync
 
         public async Task<string> CreateChannelAsync(string teamID, STChannel channel) {
-            string? channelID = string.Empty;
+            string? channelId = string.Empty;
 
             if (channel != null) {
                 string json = JsonConvert.SerializeObject(channel);
@@ -246,7 +235,7 @@ namespace STMigration.Utils {
                         JsonNode? jsonNode = JsonNode.Parse(responseContent);
 
                         if (jsonNode != null) {
-                            channelID = jsonNode["id"]?.GetValue<string>();
+                            channelId = jsonNode["id"]?.GetValue<string>();
                         } else {
                             throw new Exception("CreateChannelAsync - jsonNode is null");
                         }
@@ -257,12 +246,12 @@ namespace STMigration.Utils {
                     throw new Exception($"CreateChannelAsync - Could not serialise - channel:{channel}:");
                 }
 
-                if (string.IsNullOrEmpty(channelID)) {
+                if (string.IsNullOrEmpty(channelId)) {
                     throw new Exception($"CreateChannelAsync - channelID is null - channel:{channel}:");
                 }
             }
 
-            return channelID;
+            return channelId;
         }
 
         #endregion
@@ -279,77 +268,69 @@ namespace STMigration.Utils {
         #endregion
         #region Getters
 
-        #region Method - GetTeamUser
+        #region Method - GetUserByEmailAsync
 
-        public async Task<UserCollectionResponse?> GetTeamUser(string userEmail) {
-            return await GraphClient.Users.GetAsync(requestConfiguration => {
+        public async Task<string?> GetUserByEmailAsync(string userEmail) {
+            var users = await GraphClient.Users.GetAsync(requestConfiguration => {
                 requestConfiguration.QueryParameters.Select = ["id", "mail"];
-                requestConfiguration.QueryParameters.Filter = $"mail eq '{userEmail}'";
+                requestConfiguration.QueryParameters.Filter = $"userPrincipalName eq '{userEmail}'";
             });
+
+            string? userId = string.Empty;
+            if (
+                users != null &&
+                users.Value != null &&
+                users.Value.Count > 0
+            ) {
+                // There should be only one user so get the FirstOrDefault and if not null get the Id
+                userId = users.Value.FirstOrDefault()?.Id;
+            }
+
+            return userId;
         }
 
         #endregion
         #region Method - GetTeamByNameAsync
 
-        public async Task<string> GetTeamByNameAsync(string teamName) {
+        public async Task<string?> GetTeamByNameAsync(string teamName) {
             var teams = await GraphClient.Teams.GetAsync(requestConfiguration => {
                 requestConfiguration.QueryParameters.Select = ["displayName", "id"];
+                requestConfiguration.QueryParameters.Filter = $"displayName eq '{teamName}'";
             });
 
-            string teamID = string.Empty;
+            string? teamId = string.Empty;
             if (
                 teams != null &&
-                teams.Value != null
+                teams.Value != null &&
+                teams.Value.Count > 0
             ) {
-                foreach (var team in teams.Value) {
-                    if (
-                        team.DisplayName != null &&
-                        team.DisplayName.Equals(teamName, StringComparison.CurrentCultureIgnoreCase) &&
-                        team.Id != null
-                    ) {
-                        teamID = team.Id;
-                        break;
-                    }
-                }
+                // There should be only one team so get the FirstOrDefault and if not null get the Id
+                teamId = teams.Value.FirstOrDefault()?.Id;
             }
 
-            if (!string.IsNullOrEmpty(teamID)) {
-                return teamID;
-            }
-
-            throw new Exception($"Cannot find ID for - team:{teamName}:");
+            return teamId;
         }
 
         #endregion
         #region Method - GetChannelByNameAsync
 
-        public async Task<string> GetChannelByNameAsync(string teamID, string channelName) {
+        public async Task<string?> GetChannelByNameAsync(string teamID, string channelName) {
             var channels = await GraphClient.Teams[teamID].Channels.GetAsync(requestConfiguration => {
                 requestConfiguration.QueryParameters.Select = ["displayName", "id"];
+                requestConfiguration.QueryParameters.Filter = $"displayName eq '{channelName}'";
             });
 
-            string channelID = string.Empty;
+            string? channelId = string.Empty;
             if (
                 channels != null &&
-                channels.Value != null
+                channels.Value != null &&
+                channels.Value.Count > 0
             ) {
-                foreach (var ch in channels.Value) {
-                    if (
-                        ch.DisplayName != null &&
-                        ch.DisplayName.Equals(channelName, StringComparison.CurrentCultureIgnoreCase) &&
-                        ch.Id != null
-                    ) {
-                        channelID = ch.Id;
-                        break;
-                    }
-                }
+                // There should be only one channel so get the FirstOrDefault and if not null get the Id
+                channelId = channels.Value.FirstOrDefault()?.Id;
             }
 
-            if (!string.IsNullOrEmpty(channelID)) {
-                return channelID;
-            }
-
-            throw new Exception($"Cannot find ID for - teamID:{teamID}: channel:{channelName}:");
+            return channelId;
         }
 
         #endregion

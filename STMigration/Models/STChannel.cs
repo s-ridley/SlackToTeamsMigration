@@ -3,6 +3,7 @@
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System.Globalization;
 using System.Runtime.Serialization;
 
 namespace STMigration.Models {
@@ -25,13 +26,31 @@ namespace STMigration.Models {
         [DataMember(IsRequired = true, Name = "membershipType"), JsonProperty]
         public string MembershipType { get; set; } = "standard";
 
+        public bool IsArchived { get; set; } = false;
+
+        public string? SlackId { get; set; }
+
+        public string? SlackCreatorId { get; set; }
+
         #endregion
         #region Constructors
 
-        public STChannel(string displayName, string description, DateTime createdDateTime) {
+        public STChannel(string displayName, string description, DateTime createdDateTime, bool isArchived, string? slackId, string? slackCreatorId) {
             DisplayName = displayName;
+
+            if (string.Equals(DisplayName, "general", StringComparison.CurrentCultureIgnoreCase)) {
+                DisplayName = "Old General";
+            }
+
+            TextInfo currentTextInfo = CultureInfo.CurrentCulture.TextInfo;
+
+            DisplayName = currentTextInfo.ToTitleCase(DisplayName);
+
             Description = description;
             CreatedDateTime = createdDateTime;
+            IsArchived = isArchived;
+            SlackId = slackId;
+            SlackCreatorId = slackCreatorId;
         }
 
         #endregion

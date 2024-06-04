@@ -20,7 +20,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - GetMessagesForDay
 
-        public static IEnumerable<STMessage> GetMessagesForDay(string path, List<STUser> users) {
+        public static IEnumerable<STMessage> GetMessagesForDay(string path, List<STChannel> channels, List<STUser> users) {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"File {path}");
             Console.ResetColor();
@@ -44,7 +44,7 @@ namespace STMigration.Utils {
                     }
 
                     STUser? messageSender = FindMessageSender(obj, users);
-                    string messageText = GetFormattedText(obj, users);
+                    string messageText = GetFormattedText(obj, channels, users);
 
                     string? threadTS = obj.SelectToken("thread_ts")?.ToString();
 
@@ -60,7 +60,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - GetFormattedText
 
-        static string GetFormattedText(JObject obj, List<STUser> userList) {
+        static string GetFormattedText(JObject obj, List<STChannel> channelList, List<STUser> userList) {
             var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
 
             // Simple text, get it directly from text field
@@ -70,7 +70,7 @@ namespace STMigration.Utils {
             }
 
             StringBuilder formattedText = new();
-            FormatText(formattedText, richTextArray, userList);
+            FormatText(formattedText, richTextArray, channelList, userList);
 
             return formattedText.ToString();
         }
@@ -78,12 +78,11 @@ namespace STMigration.Utils {
         #endregion
         #region Method - FormatText
 
-        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<STUser> userList) {
+        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<STChannel> channelList, List<STUser> userList) {
             string? text;
 
             foreach (JToken token in tokens) {
                 string? type = token.SelectToken("type")?.ToString();
-                //Console.Write($"[{type}] - ");
                 switch (type) {
                     case "text":
                         text = token.SelectToken("text")?.ToString();
@@ -93,14 +92,13 @@ namespace STMigration.Utils {
                         }
 
                         _ = formattedText.Append(text);
-                        //Console.Write($"{text}\n");
                         break;
                     case "rich_text_section":
                         var subTokens = token.SelectTokens("elements[*]").ToList();
 
                         _ = formattedText.Append("<br> • ");
 
-                        FormatText(formattedText, subTokens, userList);
+                        FormatText(formattedText, subTokens, channelList, userList);
 
                         break;
                     case "link":
@@ -117,7 +115,6 @@ namespace STMigration.Utils {
                         }
 
                         _ = formattedText.Append($"<a href='{link}'>{linkText}</a>");
-                        //Console.Write($"{link}\n");
                         break;
                     case "user":
                         string? userID = token.SelectToken("user_id")?.ToString();
@@ -126,10 +123,9 @@ namespace STMigration.Utils {
                             break;
                         }
 
-                        string displayName = DisplayNameFromUserID(userList, userID);
+                        string userName = DisplayNameFromUserID(userList, userID);
 
-                        _ = formattedText.Append($"@{displayName}");
-                        //Console.Write($"{user}\n");
+                        _ = formattedText.Append($"@{userName}");
                         break;
                     case "usergroup":
                         // TODO: Figure out user group display name
@@ -148,22 +144,33 @@ namespace STMigration.Utils {
                         _ = formattedText.Append($"[{value}]");
                         break;
                     case "emoji":
-                        // TODO: Figure out better solution for emojis
-                        string? name = token.SelectToken("name")?.ToString();
+                        string? unicodeHex = token.SelectToken("unicode")?.ToString();
 
-                        if (string.IsNullOrEmpty(name)) {
+                        if (string.IsNullOrEmpty(unicodeHex)) {
                             break;
                         }
 
-                        _ = formattedText.Append($":{name}:");
+                        try {
+                            int decValue = Convert.ToInt32(unicodeHex, 16);
+
+                            _ = formattedText.Append($"<emoji alt=\"&#{decValue};\"></emoji>");
+                        } catch (Exception ex) {
+                            Console.WriteLine(ex.Message);
+                        }
                         break;
                     case "channel":
-                        // TODO: Figure out channel display name
-                        _ = formattedText.Append("@CHANNEL");
+                        string? channelId = token.SelectToken("channel_id")?.ToString();
+
+                        if (string.IsNullOrEmpty(channelId)) {
+                            break;
+                        }
+
+                        string channelName = DisplayNameFromChannelID(channelList, channelId);
+
+                        _ = formattedText.Append($"@{channelName}");
                         break;
                     case "broadcast":
-                        // TODO: What is this??
-                        _ = formattedText.Append("@BROADCASTING");
+                        // This is used to send a message to one or more channels. Does not have equvialent in Teams so will ignore
                         break;
                     default:
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -189,6 +196,20 @@ namespace STMigration.Utils {
             }
 
             return null;
+        }
+
+        #endregion
+        #region Method - DisplayNameFromChannelID
+
+        static string DisplayNameFromChannelID(List<STChannel> channelList, string channelId) {
+            if (!string.IsNullOrWhiteSpace(channelId)) {
+                var channel = channelList.FirstOrDefault(channel => channel.SlackId == channelId);
+                if (channel != null) {
+                    return channel.DisplayName;
+                }
+            }
+
+            return "Unknown Channel";
         }
 
         #endregion

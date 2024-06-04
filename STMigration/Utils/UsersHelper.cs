@@ -63,14 +63,9 @@ namespace STMigration.Utils {
                 }
 
                 try {
-                    var teamUsers = await graphHelper.GetTeamUser(user.Email);
-                    if (
-                        teamUsers != null &&
-                        teamUsers.Value != null
-                    ) {
-                        string? teamID = teamUsers.Value.FirstOrDefault()?.Id;
-
-                        user.SetTeamUserID(teamID);
+                    var userId = await graphHelper.GetUserByEmailAsync(user.Email);
+                    if (!string.IsNullOrEmpty(userId)) {
+                        user.SetTeamUserID(userId);
                     }
                 } catch (Exception) {
                     Console.ForegroundColor = ConsoleColor.Red;

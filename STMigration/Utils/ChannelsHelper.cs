@@ -17,9 +17,12 @@ namespace STMigration.Utils {
                         JObject obj = JObject.Load(reader);
 
                         // SelectToken returns null not an empty string if nothing is found
+                        string? slackId = obj.SelectToken("id")?.ToString();
+                        string? slackCreatorId = obj.SelectToken("creator")?.ToString();
                         string? displayName = obj.SelectToken("name")?.ToString();
                         string? description = obj.SelectToken("purpose.value")?.ToString();
                         string? createdDateTimeUnixTick = obj.SelectToken("created")?.ToString();
+                        _ = bool.TryParse(obj.SelectToken("is_archived")?.ToString(), out bool isArchived);
 
                         DateTime createdDateTime = DateTime.UtcNow;
 
@@ -35,7 +38,7 @@ namespace STMigration.Utils {
                             description = "";
                         }
 
-                        STChannel channel = new(displayName, description, createdDateTime);
+                        STChannel channel = new(displayName, description, createdDateTime, isArchived, slackId, slackCreatorId);
 
                         channelList.Add(channel);
                     }
