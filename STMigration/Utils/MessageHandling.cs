@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Text;
+using Microsoft.Graph.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -61,18 +62,47 @@ namespace STMigration.Utils {
         #region Method - GetFormattedText
 
         static string GetFormattedText(JObject obj, List<STChannel> channelList, List<STUser> userList) {
-            var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
+            string? subtype = obj.SelectToken("subtype")?.ToString();
 
-            // Simple text, get it directly from text field
-            if (richTextArray == null || richTextArray.Count == 0) {
-                string? text = obj.SelectToken("text")?.ToString();
-                return text ?? string.Empty;
+            string result = string.Empty;
+
+            if (!string.IsNullOrWhiteSpace(subtype)) {
+
+                switch (subtype) {
+                    case "channel_join":
+                        string? userID = obj.SelectToken("user")?.ToString();
+
+                        if (string.IsNullOrEmpty(userID)) {
+                            break;
+                        }
+
+                        string userName = DisplayNameFromUserID(userList, userID);
+
+                        result = $"@{userName} has joined the channel";
+                        break;
+                }
             }
 
-            StringBuilder formattedText = new();
-            FormatText(formattedText, richTextArray, channelList, userList);
+            if (string.IsNullOrWhiteSpace(result)) {
+                // Check for rich text block
+                var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
 
-            return formattedText.ToString();
+                if (
+                    richTextArray != null &&
+                    richTextArray.Count > 0
+                ) {
+                    // Process the rich text block
+                    StringBuilder formattedText = new();
+                    FormatText(formattedText, richTextArray, channelList, userList);
+                    result = formattedText.ToString();
+                } else {
+                    // Simple text, get it directly from text field
+                    string? text = obj.SelectToken("text")?.ToString();
+                    result = text ?? string.Empty;
+                }
+            }
+
+            return result;
         }
 
         #endregion
