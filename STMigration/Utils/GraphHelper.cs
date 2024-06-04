@@ -4,9 +4,11 @@
 using System.Text;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Threading;
 using Azure.Identity;
 using Microsoft.Graph;
 using Microsoft.Graph.Models;
+using Microsoft.Graph.Models.TermStore;
 using Microsoft.Identity.Client;
 using Microsoft.Kiota.Abstractions.Authentication;
 using Newtonsoft.Json;
@@ -135,9 +137,9 @@ namespace STMigration.Utils {
         #endregion
         #region Team Handling
 
-        #region Method - GetJoinedTeamsAsync
+        #region Method - GetUserTeamsAsync
 
-        public async Task<TeamCollectionResponse?> GetJoinedTeamsAsync() {
+        public async Task<TeamCollectionResponse?> GetUserTeamsAsync() {
             return await GraphClient.Users[Config.OwnerUserId].JoinedTeams.GetAsync(requestConfiguration => {
                 requestConfiguration.QueryParameters.Select = ["id", "displayName"];
             });
@@ -343,8 +345,15 @@ namespace STMigration.Utils {
         public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamID, string channelID, string threadID, STMessage message) {
             var msg = MessageToSend(message);
 
+            var channels = await GraphClient.Teams[teamID].Channels.GetAsync(requestConfiguration => {
+                requestConfiguration.QueryParameters.Select = ["displayName", "id"];
+                requestConfiguration.QueryParameters.Filter = $"id eq '{channelID}'";
+            });
+
+            return msg;
+
             // Send the message
-            return await GraphClient.Teams[teamID].Channels[channelID].Messages[threadID].Replies.PostAsync(msg);
+            //return await GraphClient.Teams[teamID].Channels[channelID].Messages[threadID].Replies.PostAsync(msg);
         }
 
         #endregion
@@ -353,8 +362,14 @@ namespace STMigration.Utils {
         public async Task<ChatMessage?> SendMessageToChannelAsync(string teamID, string channelID, STMessage message) {
             var msg = MessageToSend(message);
 
+            var channels = await GraphClient.Teams[teamID].Channels.GetAsync(requestConfiguration => {
+                requestConfiguration.QueryParameters.Select = ["displayName", "id"];
+                requestConfiguration.QueryParameters.Filter = $"id eq '{channelID}'";
+            });
+
+            return msg;
             // Send the message
-            return await GraphClient.Teams[teamID].Channels[channelID].Messages.PostAsync(msg);
+            //return await GraphClient.Teams[teamID].Channels[channelID].Messages.PostAsync(msg);
         }
 
         #endregion

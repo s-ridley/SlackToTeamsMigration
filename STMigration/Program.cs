@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Reflection;
-using System.Threading.Channels;
 using Microsoft.Graph.Models;
 using Newtonsoft.Json;
 using STMigration.Models;
@@ -122,9 +120,8 @@ namespace STMigration {
 
                         if (!string.IsNullOrEmpty(input) && (input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase))) {
                             if (!string.IsNullOrEmpty(teamID)) {
-                                await FinishMigrating(graphHelper, teamID);
-
-                                migrationFinished = true;
+                                //await FinishMigrating(graphHelper, teamID);
+                                //migrationFinished = true;
                             }
                         }
                     }
@@ -281,7 +278,7 @@ namespace STMigration {
                     if (!string.IsNullOrWhiteSpace(channelID)) {
                         string slackChannelFilesPath = Path.Combine(slackArchiveBasePath, channel.DisplayName);
 
-                        foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath)) {
+                        foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath, "*.old")) {
                             foreach (var message in MessageHandling.GetMessagesForDay(file, channelList, userList)) {
                                 if (
                                     message != null &&
@@ -416,10 +413,7 @@ namespace STMigration {
 
         static async Task ScanAndHandleMessages(GraphHelper graphHelper, string slackArchiveBasePath, List<STChannel> channelList, List<STUser> userList, string teamID) {
             foreach (var channel in channelList) {
-                if (
-                    channel != null &&
-                    string.Equals(channel.DisplayName, "3d-printers", StringComparison.CurrentCultureIgnoreCase)
-                ) {
+                if (channel != null) {
                     // Create migration channel
                     string? channelID = await CreateChannel(graphHelper, teamID, channel);
 
@@ -427,15 +421,31 @@ namespace STMigration {
                         string slackChannelFilesPath = Path.Combine(slackArchiveBasePath, channel.DisplayName);
 
                         if (!File.Exists(slackChannelFilesPath)) {
-                            foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath)) {
+                            string htmlFile = Path.ChangeExtension(slackChannelFilesPath, "export.html");
+                            StartHtml(htmlFile);
+
+                            foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath, "*.json")) {
                                 foreach (var message in MessageHandling.GetMessagesForDay(file, channelList, userList)) {
+                                    ChatMessage? chatMessage;
                                     if (message.IsInThread && !message.IsParentThread) {
-                                        await SendMessageToChannelThread(graphHelper, teamID, channelID, message);
-                                        continue;
+                                        chatMessage = await SendMessageToChannelThread(graphHelper, teamID, channelID, message);
+                                    } else {
+                                        chatMessage = await SendMessageToTeamChannel(graphHelper, teamID, channelID, message);
                                     }
-                                    await SendMessageToTeamChannel(graphHelper, teamID, channelID, message);
+                                    ChatMessageToHtml(htmlFile, chatMessage);
+                                }
+                                try {
+                                    // Rename the file so it will not be processed again
+                                    //File.Move(file, Path.ChangeExtension(file, ".old"));
+                                } catch (Exception ex) {
+                                    Console.ForegroundColor = ConsoleColor.Red;
+                                    Console.WriteLine($"Error renaming {file} to old: {ex.Message}");
+                                    Console.ResetColor();
+                                    Environment.Exit(1);
                                 }
                             }
+
+                            EndHtml(htmlFile);
                         }
                     } else {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -668,7 +678,7 @@ namespace STMigration {
 
         static async Task<TeamCollectionResponse?> ListJoinedTeamsAsync(GraphHelper graphHelper) {
             try {
-                return await graphHelper.GetJoinedTeamsAsync();
+                return await graphHelper.GetUserTeamsAsync();
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error getting user's teams: {ex.Message}");
@@ -746,30 +756,32 @@ namespace STMigration {
         #endregion
         #region Method - SendMessageToChannelThread
 
-        static async Task SendMessageToChannelThread(GraphHelper graphHelper, string teamID, string channelID, STMessage message) {
+        static async Task<ChatMessage?> SendMessageToChannelThread(GraphHelper graphHelper, string teamID, string channelID, STMessage message) {
             try {
                 if (string.IsNullOrEmpty(message.TeamID)) {
-                    return;
+                    return null;
                 }
 
-                await graphHelper.SendMessageToChannelThreadAsync(teamID, channelID, message.TeamID, message);
+                return await graphHelper.SendMessageToChannelThreadAsync(teamID, channelID, message.TeamID, message);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
+                return null;
             }
         }
 
         #endregion
         #region Method - SendMessageToTeamChannel
 
-        static async Task SendMessageToTeamChannel(GraphHelper graphHelper, string teamID, string channelID, STMessage message) {
+        static async Task<ChatMessage?> SendMessageToTeamChannel(GraphHelper graphHelper, string teamID, string channelID, STMessage message) {
             try {
-                await graphHelper.SendMessageToChannelAsync(teamID, channelID, message);
+                return await graphHelper.SendMessageToChannelAsync(teamID, channelID, message);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
+                return null;
             }
         }
 
@@ -796,6 +808,55 @@ namespace STMigration {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error adding attachment to message: {ex.Message}");
                 Console.ResetColor();
+            }
+        }
+
+        #endregion
+
+        #endregion
+        #region HTML Export
+
+        #region Method - StartHtml
+
+        static void StartHtml(string htmlFilePath) {
+            if (!string.IsNullOrEmpty(htmlFilePath)) {
+                File.WriteAllText(htmlFilePath, $"<!DOCTYPE html>{Environment.NewLine}");
+                File.AppendAllText(htmlFilePath, $"<html>{Environment.NewLine}");
+                File.AppendAllText(htmlFilePath, $"<body>{Environment.NewLine}");
+            }
+        }
+
+        #endregion
+        #region Method - ChatMessageToHtml
+
+        static void ChatMessageToHtml(string htmlFilePath, ChatMessage? chatMessage) {
+            if (
+                !string.IsNullOrEmpty(htmlFilePath) &&
+                chatMessage != null &&
+                chatMessage.Body != null &&
+                !string.IsNullOrWhiteSpace(chatMessage.Body.Content)
+            ) {
+                File.AppendAllText(htmlFilePath, $"<div>{Environment.NewLine}");
+                File.AppendAllText(htmlFilePath, $"<div id=\"{chatMessage.Id}\">{Environment.NewLine}");
+
+                File.AppendAllText(htmlFilePath, $"<span id=\"user_id\" style=\"font-weight:bold;\">{chatMessage.From?.User?.DisplayName}</span>");
+                File.AppendAllText(htmlFilePath, $"&nbsp;");
+                File.AppendAllText(htmlFilePath, $"<span id=\"epoch_time\" style=\"font-weight:lighter;\">{chatMessage.CreatedDateTime?.DateTime.ToString("G")}</span>{Environment.NewLine}");
+                File.AppendAllText(htmlFilePath, $"<div id=\"message_text\" style=\"font-weight:normal;white-space:pre-wrap;\">{chatMessage.Body.Content}</div>{Environment.NewLine}");
+
+                File.AppendAllText(htmlFilePath, $"</div>{Environment.NewLine}");
+                File.AppendAllText(htmlFilePath, $"</div>{Environment.NewLine}");
+                File.AppendAllText(htmlFilePath, $"<hr>{Environment.NewLine}");
+            }
+        }
+
+        #endregion
+        #region Method - EndHtml
+
+        static void EndHtml(string htmlFilePath) {
+            if (!string.IsNullOrEmpty(htmlFilePath)) {
+                File.AppendAllText(htmlFilePath, $"</html>{Environment.NewLine}");
+                File.AppendAllText(htmlFilePath, $"</body>{Environment.NewLine}");
             }
         }
 

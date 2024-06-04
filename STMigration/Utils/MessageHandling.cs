@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Text;
-using Microsoft.Graph.Models;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -12,8 +11,8 @@ namespace STMigration.Utils {
     public class MessageHandling {
         #region Method - GetFilesForChannel
 
-        public static IEnumerable<string> GetFilesForChannel(string channelPath) {
-            foreach (var file in Directory.GetFiles(channelPath)) {
+        public static IEnumerable<string> GetFilesForChannel(string channelPath, string searchPattern) {
+            foreach (var file in Directory.GetFiles(channelPath, searchPattern)) {
                 yield return file;
             }
         }
@@ -78,7 +77,7 @@ namespace STMigration.Utils {
 
                         string userName = DisplayNameFromUserID(userList, userID);
 
-                        result = $"@{userName} has joined the channel";
+                        result = $"<@{userName}> has joined the channel";
                         break;
                 }
             }
@@ -155,7 +154,7 @@ namespace STMigration.Utils {
 
                         string userName = DisplayNameFromUserID(userList, userID);
 
-                        _ = formattedText.Append($"@{userName}");
+                        _ = formattedText.Append($"<@{userName}>");
                         break;
                     case "usergroup":
                         // TODO: Figure out user group display name
@@ -175,17 +174,19 @@ namespace STMigration.Utils {
                         break;
                     case "emoji":
                         string? unicodeHex = token.SelectToken("unicode")?.ToString();
-
-                        if (string.IsNullOrEmpty(unicodeHex)) {
-                            break;
-                        }
-
-                        try {
-                            int decValue = Convert.ToInt32(unicodeHex, 16);
-
-                            _ = formattedText.Append($"<emoji alt=\"&#{decValue};\"></emoji>");
-                        } catch (Exception ex) {
-                            Console.WriteLine(ex.Message);
+                        if (!string.IsNullOrEmpty(unicodeHex)) {
+                            try {
+                                string[] unicodeHexArrary = unicodeHex.Split('-');
+                                if (unicodeHexArrary != null) {
+                                    _ = formattedText.Append($"<span>");
+                                    foreach (string str in unicodeHexArrary) {
+                                        _ = formattedText.Append($"&#x{str};");
+                                    }
+                                    _ = formattedText.Append($"</span>");
+                                }
+                            } catch (Exception ex) {
+                                Console.WriteLine(ex.Message);
+                            }
                         }
                         break;
                     case "channel":
