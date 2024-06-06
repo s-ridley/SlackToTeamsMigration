@@ -6,10 +6,10 @@ using Newtonsoft.Json.Converters;
 using System.Globalization;
 using System.Runtime.Serialization;
 
-namespace STMigration.Models {
+namespace SlackToTeams.Models {
     [DataContract]
     [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
-    public class STChannel {
+    public class SlackChannel {
         #region Properties
 
         [DataMember(IsRequired = true, Name = "displayName"), JsonProperty]
@@ -37,7 +37,7 @@ namespace STMigration.Models {
         #endregion
         #region Constructors
 
-        public STChannel(string displayName, string description, DateTime createdDateTime, bool isArchived, string? slackId, string? slackCreatorId) {
+        public SlackChannel(string displayName, string description, DateTime createdDateTime, bool isArchived, string? slackId, string? slackCreatorId) {
             DisplayName = displayName;
 
             TextInfo currentTextInfo = CultureInfo.CurrentCulture.TextInfo;

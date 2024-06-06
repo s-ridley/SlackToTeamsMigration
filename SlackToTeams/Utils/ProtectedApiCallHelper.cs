@@ -1,7 +1,7 @@
 ﻿using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 
-namespace STMigration.Utils {
+namespace SlackToTeams.Utils {
     /// <summary>
     /// Helper class to call a protected API and process its result
     /// </summary>

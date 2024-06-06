@@ -10,10 +10,10 @@ using Microsoft.Graph.Models;
 using Microsoft.Identity.Client;
 using Microsoft.Kiota.Abstractions.Authentication;
 using Newtonsoft.Json;
-using STMigration.Models;
+using SlackToTeams.Models;
 using DriveUpload = Microsoft.Graph.Drives.Item.Items.Item.CreateUploadSession;
 
-namespace STMigration.Utils {
+namespace SlackToTeams.Utils {
     public partial class GraphHelper {
         #region Fields
 
@@ -215,7 +215,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - CreateChannelAsync
 
-        public async Task<string> CreateChannelAsync(string teamID, STChannel channel) {
+        public async Task<string> CreateChannelAsync(string teamID, SlackChannel channel) {
             string? channelId = string.Empty;
 
             if (channel != null) {
@@ -340,7 +340,7 @@ namespace STMigration.Utils {
 
         #region Method - SendMessageToChannelThreadAsync
 
-        public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamID, string channelID, string threadID, STMessage message) {
+        public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamID, string channelID, string threadID, SlackMessage message) {
             var msg = MessageToSend(message);
 
             // Send the message
@@ -350,7 +350,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - SendMessageToChannelAsync
 
-        public async Task<ChatMessage?> SendMessageToChannelAsync(string teamID, string channelID, STMessage message) {
+        public async Task<ChatMessage?> SendMessageToChannelAsync(string teamID, string channelID, SlackMessage message) {
             var msg = MessageToSend(message);
 
             // Send the message
@@ -360,7 +360,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - MessageToSend
 
-        private static ChatMessage MessageToSend(STMessage message) {
+        private static ChatMessage MessageToSend(SlackMessage message) {
             ChatMessageFromIdentitySet messageFrom = MessageFrom(message);
 
             // Message that doesn't have team user equivalent
@@ -377,7 +377,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - MessageFrom
 
-        private static ChatMessageFromIdentitySet MessageFrom(STMessage message) {
+        private static ChatMessageFromIdentitySet MessageFrom(SlackMessage message) {
             if (message.User != null && !string.IsNullOrEmpty(message.User.TeamsUserID)) {
                 // User with TeamID (well mapped!)
                 return new ChatMessageFromIdentitySet {
@@ -403,7 +403,7 @@ namespace STMigration.Utils {
 
         #region Method - UploadFileToTeamChannelAsync
 
-        public async Task UploadFileToTeamChannelAsync(string teamID, string channelName, STAttachment attachment) {
+        public async Task UploadFileToTeamChannelAsync(string teamID, string channelName, SlackAttachment attachment) {
             // Get the drives for the team
             var drives = await GraphClient.Groups[teamID].Drive.GetAsync(requestConfiguration => {
                 requestConfiguration.QueryParameters.Select = ["id"];
@@ -493,7 +493,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - AddAttachmentsToMessageAsync
 
-        public async Task AddAttachmentsToMessageAsync(string teamID, string channelID, STMessage message) {
+        public async Task AddAttachmentsToMessageAsync(string teamID, string channelID, SlackMessage message) {
             var attachments = new List<ChatMessageAttachment>();
 
             foreach (var attachment in message.Attachments) {

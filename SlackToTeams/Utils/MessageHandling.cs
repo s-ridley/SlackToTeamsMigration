@@ -5,10 +5,9 @@ using System.Text;
 using System.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using SlackToTeams.Models;
 
-using STMigration.Models;
-
-namespace STMigration.Utils {
+namespace SlackToTeams.Utils {
     public class MessageHandling {
         #region Method - GetFilesForChannel
 
@@ -21,7 +20,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - GetMessagesForDay
 
-        public static IEnumerable<STMessage> GetMessagesForDay(string path, List<STChannel> channels, List<STUser> users) {
+        public static IEnumerable<SlackMessage> GetMessagesForDay(string path, List<SlackChannel> channels, List<SlackUser> users) {
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"File {path}");
             Console.ResetColor();
@@ -44,14 +43,14 @@ namespace STMigration.Utils {
                         continue;
                     }
 
-                    STUser? messageSender = FindMessageSender(obj, users);
+                    SlackUser? messageSender = FindMessageSender(obj, users);
                     string messageText = GetFormattedText(obj, channels, users);
 
                     string? threadTS = obj.SelectToken("thread_ts")?.ToString();
 
-                    List<STAttachment> attachments = GetFormattedAttachments(obj);
+                    List<SlackAttachment> attachments = GetFormattedAttachments(obj);
 
-                    STMessage message = new(messageSender, messageTS, threadTS, messageText, attachments);
+                    SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments);
 
                     yield return message;
                 }
@@ -61,7 +60,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - GetFormattedText
 
-        static string GetFormattedText(JObject obj, List<STChannel> channelList, List<STUser> userList) {
+        static string GetFormattedText(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList) {
             string? subtype = obj.SelectToken("subtype")?.ToString();
 
             string result = string.Empty;
@@ -110,7 +109,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - FormatText
 
-        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<STChannel> channelList, List<STUser> userList) {
+        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList) {
             string? text;
 
             foreach (JToken token in tokens) {
@@ -218,12 +217,12 @@ namespace STMigration.Utils {
         #endregion
         #region Method - FindMessageSender
 
-        static STUser? FindMessageSender(JObject obj, List<STUser> userList) {
+        static SlackUser? FindMessageSender(JObject obj, List<SlackUser> userList) {
             var userID = obj.SelectToken("user")?.ToString();
 
             if (!string.IsNullOrEmpty(userID)) {
                 if (userID == "USLACKBOT") {
-                    return STUser.SLACK_BOT;
+                    return SlackUser.SLACK_BOT;
                 }
 
                 return userList.FirstOrDefault(user => user.SlackUserID == userID);
@@ -235,7 +234,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - DisplayNameFromChannelID
 
-        static string DisplayNameFromChannelID(List<STChannel> channelList, string channelId) {
+        static string DisplayNameFromChannelID(List<SlackChannel> channelList, string channelId) {
             if (!string.IsNullOrWhiteSpace(channelId)) {
                 var channel = channelList.FirstOrDefault(channel => channel.SlackId == channelId);
                 if (channel != null) {
@@ -249,7 +248,7 @@ namespace STMigration.Utils {
         #endregion
         #region Method - DisplayNameFromUserID
 
-        static string DisplayNameFromUserID(List<STUser> userList, string userID) {
+        static string DisplayNameFromUserID(List<SlackUser> userList, string userID) {
             if (userID != "USLACKBOT") {
                 var simpleUser = userList.FirstOrDefault(user => user.SlackUserID == userID);
                 if (simpleUser != null) {
@@ -265,10 +264,10 @@ namespace STMigration.Utils {
         #endregion
         #region Method - GetFormattedAttachments
 
-        static List<STAttachment> GetFormattedAttachments(JObject obj) {
+        static List<SlackAttachment> GetFormattedAttachments(JObject obj) {
             var attachmentsArray = obj.SelectTokens("files[*]").ToList();
 
-            List<STAttachment> formattedAttachments = [];
+            List<SlackAttachment> formattedAttachments = [];
             int index = 0;
             foreach (var attachment in attachmentsArray) {
                 string? url = attachment.SelectToken("url_private_download")?.ToString();
@@ -283,7 +282,7 @@ namespace STMigration.Utils {
                     continue;
                 }
 
-                formattedAttachments.Add(new STAttachment(url, fileType, name, date));
+                formattedAttachments.Add(new SlackAttachment(url, fileType, name, date));
                 index++;
             }
 
