@@ -241,7 +241,7 @@ namespace SlackToTeams.Services {
                         }
                     }
                 } else {
-                    _logger.LogError("NO Slack channels found");
+                    _logger.LogError("No Slack channels found");
                 }
             } else {
                 Console.ForegroundColor = ConsoleColor.DarkRed;
@@ -297,6 +297,8 @@ namespace SlackToTeams.Services {
             }
 
             await CompleteTeamMigrationAsync(graphHelper, teamID);
+
+            await AssignTeamOwnerAsync(graphHelper, teamID);
 
             Console.ForegroundColor = ConsoleColor.DarkRed;
             Console.WriteLine("===========================================");
@@ -481,7 +483,7 @@ namespace SlackToTeams.Services {
                     ) {
                         string slackChannelFilesPath = Path.Combine(slackArchiveBasePath, channel.SlackFolder);
 
-                        if (!File.Exists(slackChannelFilesPath)) {
+                        if (Path.Exists(slackChannelFilesPath)) {
                             Console.ForegroundColor = ConsoleColor.Cyan;
                             Console.WriteLine($"Processing channel:{channel.DisplayName} folder:{slackChannelFilesPath}");
                             Console.ResetColor();
@@ -520,6 +522,11 @@ namespace SlackToTeams.Services {
                             }
 
                             EndHtml(htmlFile);
+                        } else {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"Channel folder does not exist :{slackChannelFilesPath}");
+                            Console.ResetColor();
+                            _logger.LogWarning("Channel folder does not exist :{slackChannelFilesPath}", slackChannelFilesPath);
                         }
                     } else {
                         Console.ForegroundColor = ConsoleColor.Red;
@@ -586,6 +593,35 @@ namespace SlackToTeams.Services {
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.DarkGreen;
             Console.WriteLine($"Team [{teamId}] has been migrated!");
+            Console.WriteLine();
+            Console.ResetColor();
+            _logger.LogDebug("End");
+        }
+
+        #endregion
+        #region Method - AssignTeamOwnerAsync
+
+        private async Task AssignTeamOwnerAsync(GraphHelper graphHelper, string teamId) {
+            _logger.LogDebug("Start");
+            try {
+                await graphHelper.AssignTeamOwnerAsync(teamId);
+            } catch (ODataError odataError) {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.ResetColor();
+                _logger.LogError(odataError, "Error assigning owner to team - TeamID[{teamID}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
+                Environment.Exit(1);
+            } catch (Exception ex) {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error finishing migration of team: {ex.Message}");
+                Console.ResetColor();
+                _logger.LogError(ex, "Error assigning owner to team - TeamID[{teamID}] error:{errorMessage}", teamId, ex.Message);
+                Environment.Exit(1);
+            }
+
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.DarkGreen;
+            Console.WriteLine($"Owner assigned to team [{teamId}]");
             Console.WriteLine();
             Console.ResetColor();
             _logger.LogDebug("End");

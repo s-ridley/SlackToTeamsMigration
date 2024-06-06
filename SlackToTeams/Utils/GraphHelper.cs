@@ -185,8 +185,13 @@ namespace SlackToTeams.Utils {
             var apiCall = $"teams/{teamId}/completeMigration";
 
             _ = await PostToMSGraph(apiCall, new StringContent(""));
+        }
 
-            // Add owner to the new team
+        #endregion
+        #region Method - AssignTeamOwnerAsync
+
+        public async Task AssignTeamOwnerAsync(string teamId) {
+            // Add owner to the team
             var ownerUser = new AadUserConversationMember {
                 Roles = [
                     "owner"
