@@ -546,7 +546,7 @@ namespace SlackToTeams.Services {
         #region Method - CompleteChannelMigrationAsync
 
         private async Task CompleteChannelMigrationAsync(GraphHelper graphHelper, string teamId, string channelId, string channelName) {
-            _logger.LogDebug("Start");
+            _logger.LogDebug("Start team[{teamId}] channel {channelName}", teamId, channelName);
             try {
                 await graphHelper.CompleteChannelMigrationAsync(teamId, channelId);
             } catch (ODataError odataError) {
@@ -573,7 +573,7 @@ namespace SlackToTeams.Services {
         #region Method - CompleteTeamMigrationAsync
 
         private async Task CompleteTeamMigrationAsync(GraphHelper graphHelper, string teamId) {
-            _logger.LogDebug("Start");
+            _logger.LogDebug("Start team[{teamId}]", teamId);
             try {
                 await graphHelper.CompleteTeamMigrationAsync(teamId);
             } catch (ODataError odataError) {
@@ -602,7 +602,7 @@ namespace SlackToTeams.Services {
         #region Method - AssignTeamOwnerAsync
 
         private async Task AssignTeamOwnerAsync(GraphHelper graphHelper, string teamId) {
-            _logger.LogDebug("Start");
+            _logger.LogDebug("Start Team[{teamId}]", teamId);
             try {
                 await graphHelper.AssignTeamOwnerAsync(teamId);
             } catch (ODataError odataError) {
