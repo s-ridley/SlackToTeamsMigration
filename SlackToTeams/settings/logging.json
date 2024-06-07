@@ -13,7 +13,7 @@
                 "fileSizeLimitBytes": "10485760",
                 "rollOnFileSizeLimit": true,
                 "rollingInterval": "Day",
-                "outputTemplate": "{Timestamp:yyyy-MM-dd HH:mm:ss.fffffff}|{Level}|{SourceContext}|{LineNumber}|{Message:l}{NewLine}"
+                "outputTemplate": "{Timestamp:yyyy-MM-dd HH:mm:ss.fffffff}|{Level}|{SourceContext}|{Message:l}{NewLine}"
               }
             }
           ]
