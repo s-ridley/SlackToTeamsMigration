@@ -75,8 +75,28 @@ namespace SlackToTeams.Models {
         #region Method - FormattedLocalTime
 
         public DateTime FormattedLocalTime() {
-            var ms = long.Parse(Date.Replace(".", "")) / 1000;
-            return DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime;
+            if (!string.IsNullOrWhiteSpace(Date)) {
+                if (Date.IndexOf(".000") > 0) {
+                    string tempTs = Date.Replace(".000", "");
+                    if (long.TryParse(tempTs, out long ms)) {
+                        DateTime dateTime = DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime;
+                        return dateTime;
+                    }
+                } else {
+                    string tempTs = Date.Replace(".", "");
+                    tempTs = tempTs[..^3];
+                    string lowerTs = Date[^3..];
+                    if (
+                        long.TryParse(tempTs, out long ms) &&
+                        long.TryParse(lowerTs, out long lowerMs)
+                    ) {
+                        ms += lowerMs;
+                        DateTime dateTime = DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime;
+                        return dateTime;
+                    }
+                }
+            }
+            return DateTime.MinValue;
         }
 
         #endregion

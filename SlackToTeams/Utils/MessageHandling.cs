@@ -25,35 +25,41 @@ namespace SlackToTeams.Utils {
             Console.WriteLine($"File {path}");
             Console.ResetColor();
 
-            using FileStream fs = new(path, FileMode.Open, FileAccess.Read);
-            using StreamReader sr = new(fs);
-            using JsonTextReader reader = new(sr);
+            if (File.Exists(path)) {
+                using FileStream fs = new(path, FileMode.Open, FileAccess.Read);
+                using StreamReader sr = new(fs);
+                using JsonTextReader reader = new(sr);
 
-            while (reader.Read()) {
-                if (reader.TokenType == JsonToken.StartObject) {
-                    JObject obj = JObject.Load(reader);
+                while (reader.Read()) {
+                    if (reader.TokenType == JsonToken.StartObject) {
+                        JObject obj = JObject.Load(reader);
 
-                    string? messageTS = obj.SelectToken("ts")?.ToString();
-                    if (string.IsNullOrEmpty(messageTS)) {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.Error.WriteLine($"{messageTS} is not valid in");
-                        Console.Error.WriteLine($"{obj}");
-                        Console.ResetColor();
-                        Console.WriteLine();
-                        continue;
+                        string? messageTS = obj.SelectToken("ts")?.ToString();
+                        if (string.IsNullOrEmpty(messageTS)) {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.Error.WriteLine($"{messageTS} is not valid in");
+                            Console.Error.WriteLine($"{obj}");
+                            Console.ResetColor();
+                            Console.WriteLine();
+                            continue;
+                        }
+
+                        SlackUser? messageSender = FindMessageSender(obj, users);
+                        string messageText = GetFormattedText(obj, channels, users);
+
+                        string? threadTS = obj.SelectToken("thread_ts")?.ToString();
+
+                        List<SlackAttachment> attachments = GetFormattedAttachments(obj);
+
+                        SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments);
+
+                        yield return message;
                     }
-
-                    SlackUser? messageSender = FindMessageSender(obj, users);
-                    string messageText = GetFormattedText(obj, channels, users);
-
-                    string? threadTS = obj.SelectToken("thread_ts")?.ToString();
-
-                    List<SlackAttachment> attachments = GetFormattedAttachments(obj);
-
-                    SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments);
-
-                    yield return message;
                 }
+            } else {
+                Console.ForegroundColor = ConsoleColor.Gray;
+                Console.WriteLine($"{path} is not valid");
+                Console.ResetColor();
             }
         }
 
@@ -118,11 +124,25 @@ namespace SlackToTeams.Utils {
                     case "text":
                         text = token.SelectToken("text")?.ToString();
 
-                        if (string.IsNullOrEmpty(text)) {
-                            break;
-                        }
+                        if (!string.IsNullOrEmpty(text)) {
+                            text = HttpUtility.HtmlEncode(text);
+                            var style = token.SelectToken("style");
+                            if (style != null) {
+                                var bold = style.SelectToken("bold");
+                                var code = style.SelectToken("code");
+                                var italic = style.SelectToken("italic");
 
-                        _ = formattedText.Append(HttpUtility.HtmlEncode(text));
+                                if (Convert.ToBoolean(bold)) {
+                                    _ = formattedText.Append($"<strong>{text}</strong>");
+                                } else if (Convert.ToBoolean(code)) {
+                                    _ = formattedText.Append($"<code>{text}</code>");
+                                } else if (Convert.ToBoolean(italic)) {
+                                    _ = formattedText.Append($"<em>{text}</em>");
+                                }
+                            } else {
+                                _ = formattedText.Append(text);
+                            }
+                        }
                         break;
                     case "rich_text_section":
                         var subTokens = token.SelectTokens("elements[*]").ToList();

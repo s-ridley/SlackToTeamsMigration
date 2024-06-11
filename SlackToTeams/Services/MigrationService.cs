@@ -14,6 +14,12 @@ namespace SlackToTeams.Services {
         private readonly ILogger<MigrationService> _logger;
 
         #endregion
+        #region Constants
+
+        public const string ActionFind = "finding";
+        public const string ActionCreate = "creating";
+
+        #endregion
         #region Constructors
 
         public MigrationService(IConfiguration config, ILogger<MigrationService> logger) {
@@ -599,7 +605,7 @@ namespace SlackToTeams.Services {
                 await graphHelper.CompleteChannelMigrationAsync(teamId, channelId);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error finishing migration of channel TeamID[{teamId}] channelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}[");
                 Console.ResetColor();
                 _logger.LogError(odataError, "CompleteChannelMigrationAsync - Error finishing migration of channel - TeamID[{teamId}] channelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
@@ -626,15 +632,15 @@ namespace SlackToTeams.Services {
                 await graphHelper.CompleteTeamMigrationAsync(teamId);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error finishing migration of team[{teamId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "CompleteTeamMigrationAsync - Error finishing migration of team - TeamID[{teamID}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "CompleteTeamMigrationAsync - Error finishing migration of team - TeamID[{teamId}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error finishing migration of team: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "CompleteTeamMigrationAsync - Error finishing migration of team - TeamID[{teamID}] error:{errorMessage}", teamId, ex.Message);
+                _logger.LogError(ex, "CompleteTeamMigrationAsync - Error finishing migration of team - TeamID[{teamId}] error:{errorMessage}", teamId, ex.Message);
                 Environment.Exit(1);
             }
 
@@ -655,15 +661,15 @@ namespace SlackToTeams.Services {
                 await graphHelper.AssignTeamOwnerAsync(teamId);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error assigning owner to team[{teamId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "AssignTeamOwnerAsync - Error assigning owner to team - TeamID[{teamID}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "AssignTeamOwnerAsync - Error assigning owner to team - TeamID[{teamId}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error finishing migration of team: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "AssignTeamOwnerAsync - Error assigning owner to team - TeamID[{teamID}] error:{errorMessage}", teamId, ex.Message);
+                _logger.LogError(ex, "AssignTeamOwnerAsync - Error assigning owner to team - TeamID[{teamId}] error:{errorMessage}", teamId, ex.Message);
                 Environment.Exit(1);
             }
 
@@ -807,13 +813,13 @@ namespace SlackToTeams.Services {
                 teamId = await graphHelper.GetTeamByNameAsync(teamName);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error {ActionFind} team:{teamName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "GetTeamByName - Error finding Team {teamName} code:{errorCode} message:{errorMessage}", teamName, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "GetTeamByName - Error {ActionFind} Team {teamName} code:{errorCode} message:{errorMessage}", ActionFind, teamName, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error finding Team {teamName}: {ex.Message}");
+                Console.WriteLine($"Error {ActionFind} Team {teamName}: {ex.Message}");
                 Console.ResetColor();
                 _logger.LogError(ex, "GetTeamByName - Could not find team by name :{teamName}", teamName);
                 Environment.Exit(1);
@@ -841,7 +847,7 @@ namespace SlackToTeams.Services {
 
             string? teamId = string.Empty;
             string teamName = "";
-            string actionName = "finding";
+            string actionName = ActionFind;
 
             try {
                 // Get the team name
@@ -862,7 +868,7 @@ namespace SlackToTeams.Services {
                     if (string.IsNullOrWhiteSpace(teamId)) {
                         string json = JsonConvert.SerializeObject(team);
                         teamId = await graphHelper.CreateTeamAsync(json);
-                        actionName = "creating";
+                        actionName = ActionCreate;
 
                         _logger.LogDebug("Team creation result {teamId}", teamId);
                     }
@@ -904,9 +910,9 @@ namespace SlackToTeams.Services {
                 return await graphHelper.GetUserTeamsAsync();
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error getting users teams: [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "ListJoinedTeamsAsync - Error finding code:{errorCode} message:{errorMessage}", odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "ListJoinedTeamsAsync - Error getting users teams code:{errorCode} message:{errorMessage}", odataError?.Error?.Code, odataError?.Error?.Message);
                 throw;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -926,7 +932,7 @@ namespace SlackToTeams.Services {
                 return await graphHelper.GetTeamsChannelsAsync(teamId);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error getting teams:{teamId} channels [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "ListTeamChannelsAsync - Error getting teams:{teamId} channels code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
                 throw;
@@ -950,7 +956,7 @@ namespace SlackToTeams.Services {
                 channelId = await graphHelper.GetChannelByNameAsync(teamId, channelName);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error getting chanelId name:{channelName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "GetChannelByName - Error getting chanelId name:{channelName} code:{errorCode} message:{errorMessage}", channelName, odataError?.Error?.Code, odataError?.Error?.Message);
                 throw;
@@ -977,7 +983,7 @@ namespace SlackToTeams.Services {
         private async Task<string?> CreateChannel(GraphHelper graphHelper, string teamID, SlackChannel channel) {
             _logger.LogDebug("CreateChannel - Start");
             string? channelId = string.Empty;
-            string actionName = "finding";
+            string actionName = ActionFind;
 
             if (channel != null) {
                 try {
@@ -987,7 +993,7 @@ namespace SlackToTeams.Services {
                     // If not found then create
                     if (string.IsNullOrWhiteSpace(channelId)) {
                         channelId = await graphHelper.CreateChannelAsync(teamID, channel);
-                        actionName = "creating";
+                        actionName = ActionCreate;
                         _logger.LogDebug("CreateChannel - Created channel ID[{channelId}]", channelId);
                     }
                 } catch (Exception ex) {
@@ -1020,7 +1026,7 @@ namespace SlackToTeams.Services {
                 return await graphHelper.SendMessageToChannelThreadAsync(teamId, channelId, message.TeamID, message);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
                 return null;
@@ -1042,7 +1048,7 @@ namespace SlackToTeams.Services {
                 return await graphHelper.SendMessageToChannelAsync(teamId, channelId, message);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
                 return null;
@@ -1064,7 +1070,7 @@ namespace SlackToTeams.Services {
                 await graphHelper.UploadFileToTeamChannelAsync(teamId, channelName, attachment);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error adding attachment to message TeamID[{teamId}] Channel Name:{channelName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "Error adding attachment to message TeamID[{teamId}] Channel Name:{channelName} code:{errorCode} message:{errorMessage}", teamId, channelName, odataError?.Error?.Code, odataError?.Error?.Message);
             } catch (Exception ex) {
@@ -1084,7 +1090,7 @@ namespace SlackToTeams.Services {
                 await graphHelper.AddAttachmentsToMessageAsync(teamId, channelId, message);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message: {odataError.Message}");
+                Console.WriteLine($"Error adding attachment to message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "Error adding attachment to message TeamID[{teamId}] ChannelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
                 throw;
@@ -1104,7 +1110,10 @@ namespace SlackToTeams.Services {
         #region Method - StartHtml
 
         static void StartHtml(string htmlFilePath) {
-            if (!string.IsNullOrEmpty(htmlFilePath)) {
+            if (
+                !string.IsNullOrEmpty(htmlFilePath) &&
+                !File.Exists(htmlFilePath)
+            ) {
                 File.WriteAllText(htmlFilePath, $"<!DOCTYPE html>{Environment.NewLine}");
                 File.AppendAllText(htmlFilePath, $"<html>{Environment.NewLine}");
                 File.AppendAllText(htmlFilePath, $"<body>{Environment.NewLine}");
@@ -1117,6 +1126,7 @@ namespace SlackToTeams.Services {
         static void ChatMessageToHtml(string htmlFilePath, ChatMessage? chatMessage) {
             if (
                 !string.IsNullOrEmpty(htmlFilePath) &&
+                File.Exists(htmlFilePath) &&
                 chatMessage != null &&
                 chatMessage.Body != null &&
                 !string.IsNullOrWhiteSpace(chatMessage.Body.Content)
@@ -1139,7 +1149,10 @@ namespace SlackToTeams.Services {
         #region Method - EndHtml
 
         static void EndHtml(string htmlFilePath) {
-            if (!string.IsNullOrEmpty(htmlFilePath)) {
+            if (
+                !string.IsNullOrEmpty(htmlFilePath) &&
+                File.Exists(htmlFilePath)
+            ) {
                 File.AppendAllText(htmlFilePath, $"</html>{Environment.NewLine}");
                 File.AppendAllText(htmlFilePath, $"</body>{Environment.NewLine}");
             }

@@ -63,7 +63,19 @@ namespace SlackToTeams.Utils {
                 }
 
                 try {
-                    var userId = await graphHelper.GetUserByEmailAsync(user.Email);
+                    // Check for userId matching UPN
+                    var userId = await graphHelper.GetUserByUpnAsync(user.Email);
+
+                    if (string.IsNullOrEmpty(userId)) {
+                        // Check for userId matching Email
+                        userId = await graphHelper.GetUserByEmailAsync(user.Email);
+                    }
+
+                    if (string.IsNullOrEmpty(userId)) {
+                        // Check for userId matching DisplayName
+                        userId = await graphHelper.GetUserByDisplayNameAsync(user.DisplayName);
+                    }
+
                     if (!string.IsNullOrEmpty(userId)) {
                         user.SetTeamUserID(userId);
                     }

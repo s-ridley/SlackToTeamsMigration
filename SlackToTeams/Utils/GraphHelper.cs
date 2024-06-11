@@ -273,12 +273,56 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Getters
 
+        #region Method - GetUserByUpnAsync
+
+        public async Task<string?> GetUserByUpnAsync(string userEmail) {
+            var users = await GraphClient.Users.GetAsync(requestConfiguration => {
+                requestConfiguration.QueryParameters.Select = ["id", "mail"];
+                requestConfiguration.QueryParameters.Filter = $"userPrincipalName eq '{userEmail}'";
+            });
+
+            string? userId = string.Empty;
+            if (
+                users != null &&
+                users.Value != null &&
+                users.Value.Count > 0
+            ) {
+                // There should be only one user so get the FirstOrDefault and if not null get the Id
+                userId = users.Value.FirstOrDefault()?.Id;
+            }
+
+            return userId;
+        }
+
+        #endregion
         #region Method - GetUserByEmailAsync
 
         public async Task<string?> GetUserByEmailAsync(string userEmail) {
             var users = await GraphClient.Users.GetAsync(requestConfiguration => {
                 requestConfiguration.QueryParameters.Select = ["id", "mail"];
-                requestConfiguration.QueryParameters.Filter = $"userPrincipalName eq '{userEmail}'";
+                requestConfiguration.QueryParameters.Filter = $"mail eq '{userEmail}'";
+            });
+
+            string? userId = string.Empty;
+            if (
+                users != null &&
+                users.Value != null &&
+                users.Value.Count > 0
+            ) {
+                // There should be only one user so get the FirstOrDefault and if not null get the Id
+                userId = users.Value.FirstOrDefault()?.Id;
+            }
+
+            return userId;
+        }
+
+        #endregion
+        #region Method - GetUserByDisplayNameAsync
+
+        public async Task<string?> GetUserByDisplayNameAsync(string displayName) {
+            var users = await GraphClient.Users.GetAsync(requestConfiguration => {
+                requestConfiguration.QueryParameters.Select = ["id", "mail"];
+                requestConfiguration.QueryParameters.Filter = $"displayName eq '{displayName}'";
             });
 
             string? userId = string.Empty;
@@ -383,19 +427,9 @@ namespace SlackToTeams.Utils {
         #region Method - MessageFrom
 
         private static ChatMessageFromIdentitySet MessageFrom(SlackMessage message) {
-            if (message.User != null && !string.IsNullOrEmpty(message.User.TeamsUserID)) {
-                // User with TeamID (well mapped!)
-                return new ChatMessageFromIdentitySet {
-                    User = new Identity {
-                        Id = message.User.TeamsUserID,
-                        DisplayName = message.User.DisplayName
-                    }
-                };
-            }
-
-            // User without TeamID (bad mapped!)
             return new ChatMessageFromIdentitySet {
                 User = new Identity {
+                    Id = message.User?.TeamsUserID ?? null,
                     DisplayName = message.User?.DisplayName ?? "Unknown"
                 }
             };
