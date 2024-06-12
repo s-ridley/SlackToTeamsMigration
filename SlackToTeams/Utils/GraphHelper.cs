@@ -419,7 +419,9 @@ namespace SlackToTeams.Utils {
                     ContentType = BodyType.Html,
                 },
                 From = messageFrom,
-                CreatedDateTime = message.FormattedLocalTime()
+                CreatedDateTime = message.FormattedLocalTime(),
+                Mentions = message.FormattedMentions(),
+                //HostedContents = message.FormattedContent()
             };
         }
 

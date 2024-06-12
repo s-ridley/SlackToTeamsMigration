@@ -35,6 +35,7 @@ namespace SlackToTeams.Utils {
                         JObject obj = JObject.Load(reader);
 
                         string? messageTS = obj.SelectToken("ts")?.ToString();
+
                         if (string.IsNullOrEmpty(messageTS)) {
                             Console.ForegroundColor = ConsoleColor.Red;
                             Console.Error.WriteLine($"{messageTS} is not valid in");
@@ -45,13 +46,24 @@ namespace SlackToTeams.Utils {
                         }
 
                         SlackUser? messageSender = FindMessageSender(obj, users);
-                        string messageText = GetFormattedText(obj, channels, users);
+
+                        (string messageText, List<SlackUser> mentions) = ProcessJson(obj, channels, users);
 
                         string? threadTS = obj.SelectToken("thread_ts")?.ToString();
+                        // Make sure threadTS is valid
+                        if (!string.IsNullOrWhiteSpace(threadTS)) {
+                            // Remove the dot if required
+                            threadTS = threadTS.Replace(".", "");
+                            // Try and convert to long
+                            if (!long.TryParse(threadTS, out long threadMs) || threadMs <= 0) {
+                                // If that fails then threadTS is not valid so set to null
+                                threadTS = null;
+                            }
+                        }
 
                         List<SlackAttachment> attachments = GetFormattedAttachments(obj);
 
-                        SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments);
+                        SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments, mentions);
 
                         yield return message;
                     }
@@ -66,14 +78,35 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - GetFormattedText
 
-        static string GetFormattedText(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList) {
+        static (string, List<SlackUser>) ProcessJson(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList) {
             string? subtype = obj.SelectToken("subtype")?.ToString();
 
-            string result = string.Empty;
+            string messageText = string.Empty;
+            List<SlackUser> mentions = [];
 
             if (!string.IsNullOrWhiteSpace(subtype)) {
-
                 switch (subtype) {
+                    case "bot_message":
+                        string? title = obj.SelectToken("attachments[0].title")?.ToString();
+                        string? titleLink = obj.SelectToken("attachments[0].title_link")?.ToString();
+                        string? preText = obj.SelectToken("attachments[0].pretext")?.ToString();
+
+                        StringBuilder formattedText = new();
+
+                        if (!string.IsNullOrEmpty(titleLink)) {
+                            if (string.IsNullOrEmpty(title)) {
+                                _ = formattedText.AppendLine($"<a href='{titleLink}'>{titleLink}</a>");
+                            } else {
+                                _ = formattedText.AppendLine($"<a href='{titleLink}'>{HttpUtility.HtmlEncode(title)}</a>");
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(preText)) {
+                            _ = formattedText.AppendLine(HttpUtility.HtmlEncode(preText));
+                        }
+
+                        messageText = formattedText.ToString();
+                        break;
                     case "channel_join":
                         string? userID = obj.SelectToken("user")?.ToString();
 
@@ -81,14 +114,23 @@ namespace SlackToTeams.Utils {
                             break;
                         }
 
-                        string userName = DisplayNameFromUserID(userList, userID);
+                        SlackUser userFound = FindUser(userList, userID);
 
-                        result = HttpUtility.HtmlEncode($"<@{userName}> has joined the channel");
+                        if (userFound != null) {
+                            if (userFound.TeamsUserID != null) {
+                                messageText = HttpUtility.HtmlEncode($"<at id=\"0\">{userFound.DisplayName}</at> has joined the channel");
+                                mentions.Add(userFound);
+                            } else {
+                                messageText = HttpUtility.HtmlEncode($"<{userFound.DisplayName}> has joined the channel");
+                            }
+                        } else {
+                            messageText = HttpUtility.HtmlEncode("<Unknown User> has joined the channel");
+                        }
                         break;
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(result)) {
+            if (string.IsNullOrWhiteSpace(messageText)) {
                 // Check for rich text block
                 var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
 
@@ -98,25 +140,26 @@ namespace SlackToTeams.Utils {
                 ) {
                     // Process the rich text block
                     StringBuilder formattedText = new();
-                    FormatText(formattedText, richTextArray, channelList, userList);
-                    result = formattedText.ToString();
+                    FormatText(formattedText, richTextArray, channelList, userList, mentions);
+                    messageText = formattedText.ToString();
                 } else {
                     // Simple text, get it directly from text field
                     string? text = obj.SelectToken("text")?.ToString();
                     if (!string.IsNullOrWhiteSpace(text)) {
-                        result = HttpUtility.HtmlEncode(text);
+                        messageText = HttpUtility.HtmlEncode(text);
                     }
                 }
             }
 
-            return result;
+            return (messageText, mentions);
         }
 
         #endregion
         #region Method - FormatText
 
-        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList) {
+        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList, List<SlackUser> mentions) {
             string? text;
+            int mentionCount = 0;
 
             foreach (JToken token in tokens) {
                 string? type = token.SelectToken("type")?.ToString();
@@ -149,8 +192,7 @@ namespace SlackToTeams.Utils {
 
                         _ = formattedText.Append("<br> • ");
 
-                        FormatText(formattedText, subTokens, channelList, userList);
-
+                        FormatText(formattedText, subTokens, channelList, userList, mentions);
                         break;
                     case "link":
                         string? link = token.SelectToken("url")?.ToString();
@@ -174,9 +216,17 @@ namespace SlackToTeams.Utils {
                             break;
                         }
 
-                        string userName = DisplayNameFromUserID(userList, userID);
+                        SlackUser userFound = FindUser(userList, userID);
 
-                        _ = formattedText.Append(HttpUtility.HtmlEncode($"<@{userName}>"));
+                        if (userFound != null) {
+                            if (userFound.TeamsUserID != null) {
+                                _ = formattedText.Append($"<at id=\"{mentionCount}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at>");
+                                mentions.Add(userFound);
+                                mentionCount++;
+                            } else {
+                                _ = formattedText.Append(HttpUtility.HtmlEncode($"<{userFound.DisplayName}>"));
+                            }
+                        }
                         break;
                     case "usergroup":
                         // TODO: Figure out user group display name
@@ -238,16 +288,29 @@ namespace SlackToTeams.Utils {
         #region Method - FindMessageSender
 
         static SlackUser? FindMessageSender(JObject obj, List<SlackUser> userList) {
-            var userID = obj.SelectToken("user")?.ToString();
-
-            if (!string.IsNullOrEmpty(userID)) {
-                if (userID == "USLACKBOT") {
-                    return SlackUser.SLACK_BOT;
+            string? subtype = obj.SelectToken("subtype")?.ToString();
+            if (
+                !string.IsNullOrEmpty(subtype) &&
+                string.Equals(subtype, "bot_message", StringComparison.CurrentCultureIgnoreCase)
+            ) {
+                string? username = obj.SelectToken("username")?.ToString();
+                string? botId = obj.SelectToken("bot_id")?.ToString();
+                if (
+                    !string.IsNullOrEmpty(username) &&
+                    !string.IsNullOrEmpty(botId)
+                ) {
+                    return SlackUser.BotUser(botId, username);
                 }
+            } else {
+                var userID = obj.SelectToken("user")?.ToString();
 
-                return userList.FirstOrDefault(user => user.SlackUserID == userID);
+                if (!string.IsNullOrEmpty(userID)) {
+                    if (userID == "USLACKBOT") {
+                        return SlackUser.SLACK_BOT;
+                    }
+                    return userList.FirstOrDefault(user => user.SlackUserID == userID);
+                }
             }
-
             return null;
         }
 
@@ -268,17 +331,14 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - DisplayNameFromUserID
 
-        static string DisplayNameFromUserID(List<SlackUser> userList, string userID) {
+        static SlackUser FindUser(List<SlackUser> userList, string userID) {
             if (userID != "USLACKBOT") {
                 var simpleUser = userList.FirstOrDefault(user => user.SlackUserID == userID);
                 if (simpleUser != null) {
-                    return simpleUser.DisplayName;
+                    return simpleUser;
                 }
-
-                return "Unknown User";
             }
-
-            return "SlackBot";
+            return SlackUser.SLACK_BOT;
         }
 
         #endregion

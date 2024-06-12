@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Text;
+using Microsoft.Graph.Models;
 
 namespace SlackToTeams.Models {
     public class SlackMessage {
@@ -14,22 +15,23 @@ namespace SlackToTeams.Models {
         public bool IsParentThread { get; private set; }
         public string Text { get; private set; }
         public List<SlackAttachment> Attachments { get; set; }
+        public List<SlackUser> Mentions { get; set; }
         // Team Message IDs are the Timestamps first 13 digits
         public string? TeamID => ThreadDate?.Replace(".", "")[..13] ?? Date.Replace(".", "")[..13];
 
         #endregion
         #region Constructors
 
-        public SlackMessage(SlackUser? user, string date, string? threadDate, string text, List<SlackAttachment> attachments) {
+        public SlackMessage(SlackUser? user, string date, string? threadDate, string text, List<SlackAttachment> attachments, List<SlackUser> mentions) {
             User = user;
-
             Date = date;
             ThreadDate = threadDate;
-            IsInThread = !string.IsNullOrEmpty(threadDate);
-            IsParentThread = IsInThread && ThreadDate == Date;
-
             Text = text;
             Attachments = attachments;
+            Mentions = mentions;
+
+            IsInThread = !string.IsNullOrEmpty(threadDate);
+            IsParentThread = IsInThread && ThreadDate == Date;
         }
 
         #endregion
@@ -121,6 +123,31 @@ namespace SlackToTeams.Models {
             }
 
             return formattedText.ToString();
+        }
+
+        #endregion
+        #region Method - FormattedMentions
+
+        public List<Microsoft.Graph.Models.ChatMessageMention>? FormattedMentions() {
+            List<Microsoft.Graph.Models.ChatMessageMention>? formattedMentions = [];
+            if (Mentions != null) {
+                int mentionId = 0;
+                foreach (var mention in Mentions) {
+                    ChatMessageMention chatMessageMention = new() {
+                        Id = mentionId,
+                        MentionText = mention.DisplayName,
+                        Mentioned = new ChatMessageMentionedIdentitySet() {
+                            User = new Identity() {
+                                DisplayName = mention.DisplayName,
+                                Id = mention.TeamsUserID
+                            }
+                        }
+                    };
+                    formattedMentions.Add(chatMessageMention);
+                    mentionId++;
+                }
+            }
+            return formattedMentions;
         }
 
         #endregion
