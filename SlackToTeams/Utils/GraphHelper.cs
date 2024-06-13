@@ -390,7 +390,7 @@ namespace SlackToTeams.Utils {
         #region Method - SendMessageToChannelThreadAsync
 
         public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamID, string channelID, string threadID, SlackMessage message) {
-            var msg = MessageToSend(message);
+            var msg = message.ToChatMessage();
 
             // Send the message
             return await GraphClient.Teams[teamID].Channels[channelID].Messages[threadID].Replies.PostAsync(msg);
@@ -400,41 +400,10 @@ namespace SlackToTeams.Utils {
         #region Method - SendMessageToChannelAsync
 
         public async Task<ChatMessage?> SendMessageToChannelAsync(string teamID, string channelID, SlackMessage message) {
-            var msg = MessageToSend(message);
+            var msg = message.ToChatMessage();
 
             // Send the message
             return await GraphClient.Teams[teamID].Channels[channelID].Messages.PostAsync(msg);
-        }
-
-        #endregion
-        #region Method - MessageToSend
-
-        private static ChatMessage MessageToSend(SlackMessage message) {
-            ChatMessageFromIdentitySet messageFrom = MessageFrom(message);
-
-            // Message that doesn't have team user equivalent
-            return new ChatMessage {
-                Body = new ItemBody {
-                    Content = message.FormattedMessage(),
-                    ContentType = BodyType.Html,
-                },
-                From = messageFrom,
-                CreatedDateTime = message.FormattedLocalTime(),
-                Mentions = message.FormattedMentions(),
-                //HostedContents = message.FormattedContent()
-            };
-        }
-
-        #endregion
-        #region Method - MessageFrom
-
-        private static ChatMessageFromIdentitySet MessageFrom(SlackMessage message) {
-            return new ChatMessageFromIdentitySet {
-                User = new Identity {
-                    Id = message.User?.TeamsUserID ?? null,
-                    DisplayName = message.User?.DisplayName ?? "Unknown"
-                }
-            };
         }
 
         #endregion
@@ -537,24 +506,26 @@ namespace SlackToTeams.Utils {
         public async Task AddAttachmentsToMessageAsync(string teamID, string channelID, SlackMessage message) {
             var attachments = new List<ChatMessageAttachment>();
 
-            foreach (var attachment in message.Attachments) {
-                attachments.Add(new ChatMessageAttachment {
-                    Id = attachment.TeamsGUID,
-                    ContentType = "reference",
-                    ContentUrl = attachment.TeamsURL,
-                    Name = attachment.Name
-                });
+            if (message.Attachments != null) {
+                foreach (var attachment in message.Attachments) {
+                    attachments.Add(new ChatMessageAttachment {
+                        Id = attachment.TeamsGUID,
+                        ContentType = "reference",
+                        ContentUrl = attachment.TeamsURL,
+                        Name = attachment.Name
+                    });
+                }
+
+                var msg = new ChatMessage {
+                    Body = new ItemBody {
+                        Content = message.AttachmentsMessage(),
+                        ContentType = BodyType.Html,
+                    },
+                    Attachments = attachments,
+                };
+
+                _ = await UserGraphClient.Teams[teamID].Channels[channelID].Messages[message.TeamID].Replies.PostAsync(msg);
             }
-
-            var msg = new ChatMessage {
-                Body = new ItemBody {
-                    Content = message.AttachmentsMessage(),
-                    ContentType = BodyType.Html,
-                },
-                Attachments = attachments,
-            };
-
-            _ = await UserGraphClient.Teams[teamID].Channels[channelID].Messages[message.TeamID].Replies.PostAsync(msg);
         }
 
         #endregion

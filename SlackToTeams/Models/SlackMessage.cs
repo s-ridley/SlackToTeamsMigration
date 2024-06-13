@@ -3,6 +3,7 @@
 
 using System.Text;
 using Microsoft.Graph.Models;
+using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
     public class SlackMessage {
@@ -14,21 +15,23 @@ namespace SlackToTeams.Models {
         public bool IsInThread { get; private set; }
         public bool IsParentThread { get; private set; }
         public string Text { get; private set; }
-        public List<SlackAttachment> Attachments { get; set; }
-        public List<SlackUser> Mentions { get; set; }
+        public List<SlackAttachment>? Attachments { get; set; }
+        public List<SlackUser>? Mentions { get; set; }
+        public List<SlackReaction>? Reactions { get; set; }
         // Team Message IDs are the Timestamps first 13 digits
         public string? TeamID => ThreadDate?.Replace(".", "")[..13] ?? Date.Replace(".", "")[..13];
 
         #endregion
         #region Constructors
 
-        public SlackMessage(SlackUser? user, string date, string? threadDate, string text, List<SlackAttachment> attachments, List<SlackUser> mentions) {
+        public SlackMessage(SlackUser? user, string date, string? threadDate, string text, List<SlackAttachment>? attachments, List<SlackUser>? mentions, List<SlackReaction>? reactions) {
             User = user;
             Date = date;
             ThreadDate = threadDate;
             Text = text;
             Attachments = attachments;
             Mentions = mentions;
+            Reactions = reactions;
 
             IsInThread = !string.IsNullOrEmpty(threadDate);
             IsParentThread = IsInThread && ThreadDate == Date;
@@ -38,13 +41,13 @@ namespace SlackToTeams.Models {
         #region Method - AttachmentsMessage
 
         public string AttachmentsMessage() {
-            return $"<strong>[{FormattedLocalTime()}] {User?.DisplayName ?? "UNKNOWN"}</strong><br>{FormattedAttachedAttachments()}";
+            return $"<strong>[{ConvertHelper.SlackTimestampToDateTime(Date)}] {User?.DisplayName ?? "UNKNOWN"}</strong><br>{FormattedAttachedAttachments()}";
         }
 
         #endregion
         #region Method - FormattedMessage
 
-        public string FormattedMessage() {
+        private string FormattedMessage() {
             string attachments = FormattedAttachments();
             string formattedText = FormattedText();
 
@@ -65,7 +68,7 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - FormattedText
 
-        public string FormattedText() {
+        private string FormattedText() {
             StringBuilder stringBuilder = new(Text.TrimEnd());
 
             stringBuilder.Replace("\n", "<br>");
@@ -74,40 +77,25 @@ namespace SlackToTeams.Models {
         }
 
         #endregion
-        #region Method - FormattedLocalTime
+        #region Method - FormattedFrom
 
-        public DateTime FormattedLocalTime() {
-            if (!string.IsNullOrWhiteSpace(Date)) {
-                if (Date.IndexOf(".000") > 0) {
-                    string tempTs = Date.Replace(".000", "");
-                    if (long.TryParse(tempTs, out long ms)) {
-                        DateTime dateTime = DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime;
-                        return dateTime;
-                    }
-                } else {
-                    string tempTs = Date.Replace(".", "");
-                    tempTs = tempTs[..^3];
-                    string lowerTs = Date[^3..];
-                    if (
-                        long.TryParse(tempTs, out long ms) &&
-                        long.TryParse(lowerTs, out long lowerMs)
-                    ) {
-                        ms += lowerMs;
-                        DateTime dateTime = DateTimeOffset.FromUnixTimeMilliseconds(ms).LocalDateTime;
-                        return dateTime;
-                    }
-                }
+        private ChatMessageFromIdentitySet? FormattedFrom() {
+            if (User != null) {
+                return User.ToChatMessageFromIdentitySet();
+            } else {
+                return null;
             }
-            return DateTime.MinValue;
         }
 
         #endregion
         #region Method - FormattedAttachments
 
-        public string FormattedAttachments() {
+        private string FormattedAttachments() {
             StringBuilder formattedText = new();
-            foreach (var att in Attachments) {
-                _ = formattedText.Append($"[{att.Name}]<br>");
+            if (Attachments != null) {
+                foreach (var att in Attachments) {
+                    _ = formattedText.Append($"[{att.Name}]<br>");
+                }
             }
 
             return formattedText.ToString();
@@ -116,10 +104,12 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - FormattedAttachedAttachments
 
-        public string FormattedAttachedAttachments() {
+        private string FormattedAttachedAttachments() {
             StringBuilder formattedText = new();
-            foreach (var att in Attachments) {
-                _ = formattedText.Append($"<attachment id='{att.TeamsGUID}'></attachment>");
+            if (Attachments != null) {
+                foreach (var att in Attachments) {
+                    _ = formattedText.Append($"<attachment id='{att.TeamsGUID}'></attachment>");
+                }
             }
 
             return formattedText.ToString();
@@ -128,26 +118,54 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - FormattedMentions
 
-        public List<Microsoft.Graph.Models.ChatMessageMention>? FormattedMentions() {
+        private List<Microsoft.Graph.Models.ChatMessageMention> FormattedMentions() {
             List<Microsoft.Graph.Models.ChatMessageMention>? formattedMentions = [];
-            if (Mentions != null) {
+            if (
+                Mentions != null &&
+                Mentions.Count > 0
+            ) {
                 int mentionId = 0;
                 foreach (var mention in Mentions) {
-                    ChatMessageMention chatMessageMention = new() {
-                        Id = mentionId,
-                        MentionText = mention.DisplayName,
-                        Mentioned = new ChatMessageMentionedIdentitySet() {
-                            User = new Identity() {
-                                DisplayName = mention.DisplayName,
-                                Id = mention.TeamsUserID
-                            }
-                        }
-                    };
-                    formattedMentions.Add(chatMessageMention);
+                    formattedMentions.Add(mention.ToChatMessageMention(mentionId));
                     mentionId++;
                 }
             }
             return formattedMentions;
+        }
+
+        #endregion
+        #region Method - FormattedReactions
+
+        private List<Microsoft.Graph.Models.ChatMessageReaction> FormattedReactions() {
+            List<Microsoft.Graph.Models.ChatMessageReaction>? formattedReactions = [];
+            if (
+                Reactions != null &&
+                Reactions.Count > 0
+            ) {
+                DateTimeOffset dateTimeOffset = ConvertHelper.SlackTimestampToDateTimeOffset(Date);
+                foreach (var reaction in Reactions) {
+                    formattedReactions.Add(reaction.ToChatMessageReaction(dateTimeOffset));
+                }
+            }
+            return formattedReactions;
+        }
+
+        #endregion
+        #region Method - ToChatMessage
+
+        public ChatMessage ToChatMessage() {
+            // Message that doesn't have team user equivalent
+            return new ChatMessage {
+                Body = new ItemBody {
+                    Content = FormattedMessage(),
+                    ContentType = BodyType.Html,
+                },
+                From = FormattedFrom(),
+                CreatedDateTime = ConvertHelper.SlackTimestampToDateTime(Date),
+                Mentions = FormattedMentions(),
+                Reactions = FormattedReactions()
+                //HostedContents = FormattedContent()
+            };
         }
 
         #endregion

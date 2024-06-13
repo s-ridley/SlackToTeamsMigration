@@ -3,6 +3,8 @@
 
 using System.Text;
 using System.Web;
+using Microsoft.Graph.Models;
+using Microsoft.Graph.Models.TermStore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SlackToTeams.Models;
@@ -47,7 +49,7 @@ namespace SlackToTeams.Utils {
 
                         SlackUser? messageSender = FindMessageSender(obj, users);
 
-                        (string messageText, List<SlackUser> mentions) = ProcessJson(obj, channels, users);
+                        (string messageText, List<SlackUser>? mentions, List<SlackReaction>? reactions) = ProcessJson(obj, channels, users);
 
                         string? threadTS = obj.SelectToken("thread_ts")?.ToString();
                         // Make sure threadTS is valid
@@ -61,9 +63,9 @@ namespace SlackToTeams.Utils {
                             }
                         }
 
-                        List<SlackAttachment> attachments = GetFormattedAttachments(obj);
+                        List<SlackAttachment>? attachments = GetFormattedAttachments(obj);
 
-                        SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments, mentions);
+                        SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments, mentions, reactions);
 
                         yield return message;
                     }
@@ -78,11 +80,12 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - GetFormattedText
 
-        static (string, List<SlackUser>) ProcessJson(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList) {
+        static (string, List<SlackUser>?, List<SlackReaction>?) ProcessJson(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList) {
             string? subtype = obj.SelectToken("subtype")?.ToString();
 
             string messageText = string.Empty;
-            List<SlackUser> mentions = [];
+            List<SlackUser>? mentions = null;
+            List<SlackReaction>? reactions = null;
 
             if (!string.IsNullOrWhiteSpace(subtype)) {
                 switch (subtype) {
@@ -119,6 +122,7 @@ namespace SlackToTeams.Utils {
                         if (userFound != null) {
                             if (userFound.TeamsUserID != null) {
                                 messageText = HttpUtility.HtmlEncode($"<at id=\"0\">{userFound.DisplayName}</at> has joined the channel");
+                                mentions ??= [];
                                 mentions.Add(userFound);
                             } else {
                                 messageText = HttpUtility.HtmlEncode($"<{userFound.DisplayName}> has joined the channel");
@@ -151,13 +155,51 @@ namespace SlackToTeams.Utils {
                 }
             }
 
-            return (messageText, mentions);
+            var reactionsArray = obj.SelectTokens("reactions[*]").ToList();
+            if (
+                reactionsArray != null &&
+                reactionsArray.Count > 0
+            ) {
+                foreach (JToken reaction in reactionsArray) {
+                    string? name = reaction.SelectToken("name")?.ToString();
+                    name = ConvertHelper.SlackToTeamsReaction(name);
+                    if (!string.IsNullOrWhiteSpace(name)) {
+                        var usersArray = reaction.SelectTokens("users[*]").ToList();
+                        if (
+                            usersArray != null &&
+                            usersArray.Count > 0
+                        ) {
+                            foreach (JToken user in usersArray) {
+                                string? userId = user.ToString();
+                                if (!string.IsNullOrWhiteSpace(userId)) {
+                                    SlackUser userFound = FindUser(userList, userId);
+
+                                    if (userFound != null) {
+                                        if (userFound.TeamsUserID != null) {
+                                            reactions ??= [];
+                                            reactions.Add(
+                                                new SlackReaction(
+                                                    null,       // createdDateTime
+                                                    name,       // reactionType
+                                                    userFound   // user
+                                                )
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return (messageText, mentions, reactions);
         }
 
         #endregion
         #region Method - FormatText
 
-        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList, List<SlackUser> mentions) {
+        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList, List<SlackUser>? mentions) {
             string? text;
             int mentionCount = 0;
 
@@ -221,6 +263,7 @@ namespace SlackToTeams.Utils {
                         if (userFound != null) {
                             if (userFound.TeamsUserID != null) {
                                 _ = formattedText.Append($"<at id=\"{mentionCount}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at>");
+                                mentions ??= [];
                                 mentions.Add(userFound);
                                 mentionCount++;
                             } else {
@@ -344,26 +387,33 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - GetFormattedAttachments
 
-        static List<SlackAttachment> GetFormattedAttachments(JObject obj) {
+        static List<SlackAttachment>? GetFormattedAttachments(JObject obj) {
             var attachmentsArray = obj.SelectTokens("files[*]").ToList();
 
-            List<SlackAttachment> formattedAttachments = [];
-            int index = 0;
-            foreach (var attachment in attachmentsArray) {
-                string? url = attachment.SelectToken("url_private_download")?.ToString();
-                string? fileType = attachment.SelectToken("filetype")?.ToString();
-                string? name = attachment.SelectToken("name")?.ToString();
-                string? date = attachment.SelectToken("timestamp")?.ToString();
+            List<SlackAttachment>? formattedAttachments = null;
 
-                if (string.IsNullOrEmpty(url)) {
-                    continue;
-                }
-                if (string.IsNullOrEmpty(fileType) && string.IsNullOrEmpty(name)) {
-                    continue;
-                }
+            if (
+                attachmentsArray != null &&
+                attachmentsArray.Count > 0
+            ) {
+                formattedAttachments = [];
+                int index = 0;
+                foreach (var attachment in attachmentsArray) {
+                    string? url = attachment.SelectToken("url_private_download")?.ToString();
+                    string? fileType = attachment.SelectToken("filetype")?.ToString();
+                    string? name = attachment.SelectToken("name")?.ToString();
+                    string? date = attachment.SelectToken("timestamp")?.ToString();
 
-                formattedAttachments.Add(new SlackAttachment(url, fileType, name, date));
-                index++;
+                    if (string.IsNullOrEmpty(url)) {
+                        continue;
+                    }
+                    if (string.IsNullOrEmpty(fileType) && string.IsNullOrEmpty(name)) {
+                        continue;
+                    }
+
+                    formattedAttachments.Add(new SlackAttachment(url, fileType, name, date));
+                    index++;
+                }
             }
 
             return formattedAttachments;

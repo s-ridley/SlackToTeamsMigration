@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using Microsoft.Graph.Models;
 using Newtonsoft.Json;
 
 namespace SlackToTeams.Models {
@@ -46,6 +47,53 @@ namespace SlackToTeams.Models {
 
         public void SetTeamUserID(string? id) {
             TeamsUserID = id ?? string.Empty;
+        }
+
+        #endregion
+        #region Method - ToChatMessageMention
+
+        public ChatMessageMention ToChatMessageMention(int mentionId) {
+            return new ChatMessageMention {
+                Id = mentionId,
+                MentionText = DisplayName,
+                Mentioned = ToChatMessageMentionedIdentitySet()
+            };
+        }
+
+        #endregion
+        #region Method - ToChatMessageFromIdentitySet
+
+        public ChatMessageFromIdentitySet ToChatMessageFromIdentitySet() {
+            return new ChatMessageFromIdentitySet {
+                User = new Identity {
+                    Id = TeamsUserID ?? null,
+                    DisplayName = DisplayName ?? "Unknown"
+                }
+            };
+        }
+
+        #endregion
+        #region Method - ToChatMessageMentionedIdentitySet
+
+        public ChatMessageMentionedIdentitySet ToChatMessageMentionedIdentitySet() {
+            return new ChatMessageMentionedIdentitySet {
+                User = new Identity {
+                    Id = TeamsUserID ?? null,
+                    DisplayName = DisplayName ?? "Unknown"
+                }
+            };
+        }
+
+        #endregion
+        #region Method - ToChatMessageReactionIdentitySet
+
+        public ChatMessageReactionIdentitySet ToChatMessageReactionIdentitySet() {
+            return new ChatMessageReactionIdentitySet {
+                User = new Identity {
+                    Id = TeamsUserID ?? null,
+                    DisplayName = DisplayName ?? "Unknown"
+                }
+            };
         }
 
         #endregion
