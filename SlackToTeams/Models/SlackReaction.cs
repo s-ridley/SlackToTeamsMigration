@@ -22,9 +22,9 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - ToChatMessageReaction
 
-        public ChatMessageReaction ToChatMessageReaction(DateTimeOffset dateTimeOffset) {
+        public ChatMessageReaction ToChatMessageReaction() {
             return new ChatMessageReaction {
-                CreatedDateTime = DateTimeOffset.Now, // CreatedDateTime != null ? CreatedDateTime : dateTimeOffset,
+                CreatedDateTime = DateTimeOffset.Now,
                 ReactionType = ReactionType,
                 User = User.ToChatMessageReactionIdentitySet()
             };

@@ -3,8 +3,6 @@
 
 using System.Text;
 using System.Web;
-using Microsoft.Graph.Models;
-using Microsoft.Graph.Models.TermStore;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using SlackToTeams.Models;

@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace SlackToTeams.Utils {
+﻿namespace SlackToTeams.Utils {
     public class ConvertHelper {
         #region Method - SlackTimestampToDateTime
 

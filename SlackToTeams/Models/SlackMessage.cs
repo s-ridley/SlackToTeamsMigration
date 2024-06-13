@@ -142,9 +142,8 @@ namespace SlackToTeams.Models {
                 Reactions != null &&
                 Reactions.Count > 0
             ) {
-                DateTimeOffset dateTimeOffset = ConvertHelper.SlackTimestampToDateTimeOffset(Date);
                 foreach (var reaction in Reactions) {
-                    formattedReactions.Add(reaction.ToChatMessageReaction(dateTimeOffset));
+                    formattedReactions.Add(reaction.ToChatMessageReaction());
                 }
             }
             return formattedReactions;
