@@ -4,6 +4,7 @@
 using System.Text;
 using System.Web;
 using Microsoft.Graph.Models;
+using Serilog;
 using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
@@ -158,7 +159,7 @@ namespace SlackToTeams.Models {
         #region Method - ToMentions
 
         private List<Microsoft.Graph.Models.ChatMessageMention> ToMentions() {
-            List<Microsoft.Graph.Models.ChatMessageMention>? formattedMentions = [];
+            List<Microsoft.Graph.Models.ChatMessageMention> formattedMentions = [];
             if (
                 Mentions != null &&
                 Mentions.Count > 0
@@ -176,7 +177,7 @@ namespace SlackToTeams.Models {
         #region Method - ToReactions
 
         private List<Microsoft.Graph.Models.ChatMessageReaction> ToReactions() {
-            List<Microsoft.Graph.Models.ChatMessageReaction>? formattedReactions = [];
+            List<Microsoft.Graph.Models.ChatMessageReaction> formattedReactions = [];
             if (
                 Reactions != null &&
                 Reactions.Count > 0
@@ -191,14 +192,13 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - ToHostedContents
 
-        private List<Microsoft.Graph.Models.ChatMessageHostedContent>? ToHostedContents() {
-            List<Microsoft.Graph.Models.ChatMessageHostedContent>? formattedHostedContents = null;
+        private List<Microsoft.Graph.Models.ChatMessageHostedContent> ToHostedContents() {
+            List<Microsoft.Graph.Models.ChatMessageHostedContent> formattedHostedContents = [];
             if (
                 HostedContents != null &&
                 HostedContents.Count > 0
             ) {
                 foreach (var hostedContent in HostedContents) {
-                    formattedHostedContents ??= [];
                     formattedHostedContents.Add(hostedContent.ToChatMessageHostedContent());
                 }
             }
@@ -208,8 +208,8 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - ToAttachments
 
-        private List<ChatMessageAttachment>? ToAttachments() {
-            List<ChatMessageAttachment>? attachments = null;
+        private List<ChatMessageAttachment> ToAttachments() {
+            List<ChatMessageAttachment> attachments = [];
             if (
                 Attachments != null &&
                 Attachments.Count > 0
@@ -220,7 +220,6 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.TeamsGUID) &&
                         !string.IsNullOrWhiteSpace(attachment.TeamsURL)
                     ) {
-                        attachments ??= [];
                         attachments.Add(new ChatMessageAttachment {
                             Id = attachment.TeamsGUID,
                             ContentType = "reference",
