@@ -147,8 +147,10 @@ namespace SlackToTeams.Models {
                 HostedContents != null &&
                 HostedContents.Count > 0
             ) {
+                int tempId = 1;
                 foreach (var hostedContent in HostedContents) {
-                    _ = formattedText.Append($"<span><img src=\"../hostedContents/{hostedContent.Id}/$value\"></span>");
+                    _ = formattedText.Append($"<span><img src=\"../hostedContents/{tempId}/$value\"></span>");
+                    tempId++;
                 }
             }
 
@@ -198,8 +200,10 @@ namespace SlackToTeams.Models {
                 HostedContents != null &&
                 HostedContents.Count > 0
             ) {
+                int tempId = 1;
                 foreach (var hostedContent in HostedContents) {
-                    formattedHostedContents.Add(hostedContent.ToChatMessageHostedContent());
+                    formattedHostedContents.Add(hostedContent.ToChatMessageHostedContent(tempId));
+                    tempId++;
                 }
             }
             return formattedHostedContents;

@@ -4,7 +4,6 @@ using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
     public class SlackHostedContent {
-
         #region Properties
 
         public string? Id { get; private set; }
@@ -31,12 +30,16 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - ToChatMessageReaction
 
-        public ChatMessageHostedContent ToChatMessageHostedContent() {
-            return new ChatMessageHostedContent {
-                Id = Id,
+        public ChatMessageHostedContent ToChatMessageHostedContent(int tempId) {
+            ChatMessageHostedContent result = new ChatMessageHostedContent {
                 ContentBytes = ContentBytes,
                 ContentType = ContentType
             };
+            result.AdditionalData.Add(
+                "@microsoft.graph.temporaryId",
+                tempId
+            );
+            return result;
         }
 
         #endregion
