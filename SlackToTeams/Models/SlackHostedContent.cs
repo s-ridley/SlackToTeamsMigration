@@ -1,12 +1,10 @@
 ﻿using Microsoft.Graph.Models;
 using Newtonsoft.Json;
-using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
     public class SlackHostedContent {
         #region Properties
 
-        public string? Id { get; private set; }
         public byte[]? ContentBytes { get; private set; }
         public string? ContentType { get; private set; }
 
@@ -15,14 +13,6 @@ namespace SlackToTeams.Models {
 
         [JsonConstructor]
         public SlackHostedContent(byte[] contentBytes, string contentType) {
-            // Set Id Base36 string of a new GUID
-            Id = ConvertHelper.GuidToBase36(Guid.NewGuid());
-            ContentBytes = contentBytes;
-            ContentType = contentType;
-        }
-
-        public SlackHostedContent(string id, byte[] contentBytes, string contentType) {
-            Id = id;
             ContentBytes = contentBytes;
             ContentType = contentType;
         }
@@ -31,13 +21,13 @@ namespace SlackToTeams.Models {
         #region Method - ToChatMessageReaction
 
         public ChatMessageHostedContent ToChatMessageHostedContent(int tempId) {
-            ChatMessageHostedContent result = new ChatMessageHostedContent {
+            ChatMessageHostedContent result = new() {
                 ContentBytes = ContentBytes,
                 ContentType = ContentType
             };
             result.AdditionalData.Add(
                 "@microsoft.graph.temporaryId",
-                tempId
+                tempId.ToString()
             );
             return result;
         }
