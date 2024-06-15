@@ -1,15 +1,23 @@
-﻿namespace SlackToTeams.Utils {
+﻿using System.Numerics;
+using System.Text;
+
+namespace SlackToTeams.Utils {
     public class ConvertHelper {
+        #region Constants
+
+        private const string Base36CharList = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+        #endregion
         #region Method - SlackTimestampToDateTime
 
-        public static DateTime SlackTimestampToDateTime(string timestamp) {
+        public static DateTime SlackTimestampToDateTime(string? timestamp) {
             return SlackTimestampToDateTimeOffset(timestamp).LocalDateTime;
         }
 
         #endregion
         #region Method - SlackTimestampToDateTimeOffset
 
-        public static DateTimeOffset SlackTimestampToDateTimeOffset(string timestamp) {
+        public static DateTimeOffset SlackTimestampToDateTimeOffset(string? timestamp) {
             DateTimeOffset result = DateTimeOffset.MinValue;
 
             if (!string.IsNullOrWhiteSpace(timestamp)) {
@@ -18,7 +26,7 @@
                     if (long.TryParse(tempTs, out long ms)) {
                         result = DateTimeOffset.FromUnixTimeMilliseconds(ms);
                     }
-                } else {
+                } else if (timestamp.IndexOf(".") > 0) {
                     string tempTs = timestamp.Replace(".", "");
                     tempTs = tempTs[..^3];
                     string lowerTs = timestamp[^3..];
@@ -29,7 +37,13 @@
                         ms += lowerMs;
                         result = DateTimeOffset.FromUnixTimeMilliseconds(ms);
                     }
+                } else {
+                    if (long.TryParse(timestamp, out long ms)) {
+                        result = DateTimeOffset.FromUnixTimeSeconds(ms);
+                    }
                 }
+            } else {
+                result = DateTimeOffset.UtcNow;
             }
             return result;
         }
@@ -59,6 +73,36 @@
             }
 
             return result;
+        }
+
+        #endregion
+        #region Method - GuidToBase36
+
+        public static string GuidToBase36(Guid guid) {
+            // Convert the GUID to a byte array
+            byte[] guidBytes = guid.ToByteArray();
+
+            // Create a new byte array with an extra byte for the sign bit
+            byte[] bytes = new byte[guidBytes.Length + 1];
+
+            // Copy the GUID bytes into the new array
+            Array.Copy(guidBytes, bytes, guidBytes.Length);
+
+            // Ensure the BigInteger is a positive number by setting the extra byte to 0
+            bytes[^1] = 0;
+
+            // Convert the byte array to a BigInteger
+            BigInteger bigInt = new(bytes);
+
+            StringBuilder result = new();
+            // Convert the BigInteger to a base36 string
+            do {
+                result.Insert(0, Base36CharList[(int)(bigInt % 36)]);
+                bigInt /= 36;
+            }
+            while (bigInt != 0);
+
+            return result.ToString();
         }
 
         #endregion

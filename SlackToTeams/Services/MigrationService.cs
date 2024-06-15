@@ -376,7 +376,7 @@ namespace SlackToTeams.Services {
                         string slackChannelFilesPath = Path.Combine(slackArchiveBasePath, channel.DisplayName);
 
                         foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath, "*.old")) {
-                            foreach (var message in MessageHandling.GetMessagesForDay(file, channelList, userList)) {
+                            foreach (var message in MessageHandling.GetMessagesForDay(channel.DisplayName, file, channelList, userList)) {
                                 if (
                                     message != null &&
                                     message.Attachments != null &&
@@ -549,9 +549,25 @@ namespace SlackToTeams.Services {
 
                             foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath, "*.json")) {
                                 _logger.LogDebug("Processing file:{file}", file);
-                                foreach (var message in MessageHandling.GetMessagesForDay(file, channelList, userList)) {
+                                foreach (var message in MessageHandling.GetMessagesForDay(channel.DisplayName, file, channelList, userList)) {
                                     if (message != null) {
-                                        ChatMessage? chatMessage = null;
+                                        if (
+                                            message.Attachments != null &&
+                                            message.Attachments.Count > 0
+                                        ) {
+                                            foreach (var attachment in message.Attachments) {
+                                                // Check if the attachment is not an image
+                                                if (
+                                                    attachment != null &&
+                                                    !string.IsNullOrWhiteSpace(attachment.MimeType) &&
+                                                    !attachment.MimeType.StartsWith("image/")
+                                                ) {
+                                                    // If so upload to teams drive
+                                                    await UploadFileToPath(graphHelper, teamId, channel.DisplayName, attachment);
+                                                }
+                                            }
+                                        }
+                                        ChatMessage? chatMessage;
                                         if (message.IsInThread && !message.IsParentThread) {
                                             _logger.LogDebug("Processing message as in thread sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
                                             chatMessage = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);

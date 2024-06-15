@@ -20,9 +20,9 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - GetMessagesForDay
 
-        public static IEnumerable<SlackMessage> GetMessagesForDay(string path, List<SlackChannel> channels, List<SlackUser> users) {
+        public static IEnumerable<SlackMessage> GetMessagesForDay(string channel, string path, List<SlackChannel> channels, List<SlackUser> users) {
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"File {path}");
+            Console.WriteLine($"Channel {channel} File {path}");
             Console.ResetColor();
 
             if (File.Exists(path)) {
@@ -61,9 +61,51 @@ namespace SlackToTeams.Utils {
                             }
                         }
 
-                        List<SlackAttachment>? attachments = GetFormattedAttachments(obj);
+                        List<SlackAttachment>? attachments = GetFormattedAttachments(channel, obj);
 
-                        SlackMessage message = new(messageSender, messageTS, threadTS, messageText, attachments, mentions, reactions);
+                        List<SlackHostedContent>? hostedContents = null;
+
+                        if (
+                            attachments != null &&
+                            attachments.Count > 0
+                        ) {
+                            foreach (var attachment in attachments) {
+                                try {
+                                    // Check if the attachment is an image
+                                    if (
+                                        attachment != null &&
+                                        !string.IsNullOrWhiteSpace(attachment.MimeType) &&
+                                        attachment.MimeType.StartsWith("image/")
+                                    ) {
+                                        // Download the file and convert to base64
+                                        attachment.ToBase64().Wait();
+                                        if (!string.IsNullOrWhiteSpace(attachment.Base64)) {
+                                            // Add a SlackHostedContent object to the message
+                                            hostedContents ??= [];
+                                            hostedContents.Add(
+                                                new SlackHostedContent(
+                                                    System.Text.Encoding.UTF8.GetBytes(attachment.Base64),  // contentBytes
+                                                    attachment.MimeType                                     // contentType
+                                                )
+                                            );
+                                        }
+                                    }
+                                } catch (Exception ex) {
+                                    Console.WriteLine(ex.Message);
+                                }
+                            }
+                        }
+
+                        SlackMessage message = new(
+                            messageSender,      // user
+                            messageTS,          // date
+                            threadTS,           // threadDate
+                            messageText,        // text
+                            attachments,
+                            mentions,
+                            reactions,
+                            hostedContents
+                        );
 
                         yield return message;
                     }
@@ -119,9 +161,9 @@ namespace SlackToTeams.Utils {
 
                         if (userFound != null) {
                             if (userFound.TeamsUserID != null) {
-                                messageText = HttpUtility.HtmlEncode($"<at id=\"0\">{userFound.DisplayName}</at> has joined the channel");
                                 mentions ??= [];
                                 mentions.Add(userFound);
+                                messageText = HttpUtility.HtmlEncode($"<at id=\"{mentions.Count}\">{userFound.DisplayName}</at> has joined the channel");
                             } else {
                                 messageText = HttpUtility.HtmlEncode($"<{userFound.DisplayName}> has joined the channel");
                             }
@@ -142,7 +184,7 @@ namespace SlackToTeams.Utils {
                 ) {
                     // Process the rich text block
                     StringBuilder formattedText = new();
-                    FormatText(formattedText, richTextArray, channelList, userList, mentions);
+                    mentions = FormatText(formattedText, richTextArray, channelList, userList, mentions);
                     messageText = formattedText.ToString();
                 } else {
                     // Simple text, get it directly from text field
@@ -190,16 +232,14 @@ namespace SlackToTeams.Utils {
                     }
                 }
             }
-
             return (messageText, mentions, reactions);
         }
 
         #endregion
         #region Method - FormatText
 
-        static void FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList, List<SlackUser>? mentions) {
+        static List<SlackUser>? FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList, List<SlackUser>? mentions) {
             string? text;
-            int mentionCount = 0;
 
             foreach (JToken token in tokens) {
                 string? type = token.SelectToken("type")?.ToString();
@@ -232,7 +272,7 @@ namespace SlackToTeams.Utils {
 
                         _ = formattedText.Append("<br> • ");
 
-                        FormatText(formattedText, subTokens, channelList, userList, mentions);
+                        mentions = FormatText(formattedText, subTokens, channelList, userList, mentions);
                         break;
                     case "link":
                         string? link = token.SelectToken("url")?.ToString();
@@ -260,10 +300,9 @@ namespace SlackToTeams.Utils {
 
                         if (userFound != null) {
                             if (userFound.TeamsUserID != null) {
-                                _ = formattedText.Append($"<at id=\"{mentionCount}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at>");
                                 mentions ??= [];
                                 mentions.Add(userFound);
-                                mentionCount++;
+                                _ = formattedText.Append($"<at id=\"{mentions.Count}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at>");
                             } else {
                                 _ = formattedText.Append(HttpUtility.HtmlEncode($"<{userFound.DisplayName}>"));
                             }
@@ -323,6 +362,7 @@ namespace SlackToTeams.Utils {
                         break;
                 }
             }
+            return mentions;
         }
 
         #endregion
@@ -385,7 +425,7 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - GetFormattedAttachments
 
-        static List<SlackAttachment>? GetFormattedAttachments(JObject obj) {
+        static List<SlackAttachment>? GetFormattedAttachments(string channel, JObject obj) {
             var attachmentsArray = obj.SelectTokens("files[*]").ToList();
 
             List<SlackAttachment>? formattedAttachments = null;
@@ -395,22 +435,35 @@ namespace SlackToTeams.Utils {
                 attachmentsArray.Count > 0
             ) {
                 formattedAttachments = [];
-                int index = 0;
                 foreach (var attachment in attachmentsArray) {
                     string? url = attachment.SelectToken("url_private_download")?.ToString();
                     string? fileType = attachment.SelectToken("filetype")?.ToString();
+                    string? mimeType = attachment.SelectToken("mimetype")?.ToString();
                     string? name = attachment.SelectToken("name")?.ToString();
-                    string? date = attachment.SelectToken("timestamp")?.ToString();
 
-                    if (string.IsNullOrEmpty(url)) {
-                        continue;
-                    }
-                    if (string.IsNullOrEmpty(fileType) && string.IsNullOrEmpty(name)) {
-                        continue;
-                    }
+                    if (
+                        !string.IsNullOrWhiteSpace(url) &&
+                        !string.IsNullOrWhiteSpace(fileType) &&
+                        !string.IsNullOrWhiteSpace(mimeType) &&
+                        !string.IsNullOrWhiteSpace(name)
+                    ) {
+                        string? title = attachment.SelectToken("title")?.ToString();
+                        string? size = attachment.SelectToken("size")?.ToString();
+                        string? created = attachment.SelectToken("created")?.ToString();
 
-                    formattedAttachments.Add(new SlackAttachment(url, fileType, name, date));
-                    index++;
+                        SlackAttachment slackAttachment = new(
+                            channel,
+                            url,                                                    // slackUrl
+                            name,
+                            title,
+                            fileType,
+                            mimeType,
+                            Convert.ToInt64(size),                                  // size
+                            ConvertHelper.SlackTimestampToDateTimeOffset(created)   // date
+                        );
+
+                        formattedAttachments.Add(slackAttachment);
+                    }
                 }
             }
 
