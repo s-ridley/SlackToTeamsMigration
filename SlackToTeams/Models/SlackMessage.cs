@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Net.Mail;
 using System.Text;
 using System.Web;
 using Microsoft.Graph.Models;
@@ -97,8 +98,14 @@ namespace SlackToTeams.Models {
         private string FormattedAttachments() {
             StringBuilder formattedText = new();
             if (Attachments != null) {
-                foreach (var att in Attachments) {
-                    _ = formattedText.Append($"[{att.Name}]<br>");
+                foreach (var attachment in Attachments) {
+                    if (
+                        attachment != null &&
+                        !string.IsNullOrWhiteSpace(attachment.TeamsGUID)
+                    ) {
+                        _ = formattedText.Append($"<attachment id='{attachment.TeamsGUID}'></attachment>");
+                    }
+                    //_ = formattedText.Append($"[{attachment.Name}]<br>");
                 }
             }
 
@@ -111,8 +118,13 @@ namespace SlackToTeams.Models {
         private string FormattedAttachedAttachments() {
             StringBuilder formattedText = new();
             if (Attachments != null) {
-                foreach (var att in Attachments) {
-                    _ = formattedText.Append($"<attachment id='{att.TeamsGUID}'></attachment>");
+                foreach (var attachment in Attachments) {
+                    if (
+                        attachment != null &&
+                        !string.IsNullOrWhiteSpace(attachment.TeamsGUID)
+                    ) {
+                        _ = formattedText.Append($"<attachment id='{attachment.TeamsGUID}'></attachment>");
+                    }
                 }
             }
 

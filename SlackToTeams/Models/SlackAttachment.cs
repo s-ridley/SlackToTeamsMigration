@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using Azure;
 using Serilog;
 
 namespace SlackToTeams.Models {
@@ -80,15 +81,10 @@ namespace SlackToTeams.Models {
                     var response = await client.GetAsync($"{SlackURL}");
                     // Make sure the response is a success 
                     _ = response.EnsureSuccessStatusCode();
-                    // Read the response content into a Stream
-                    await using var slackStream = await response.Content.ReadAsStreamAsync();
-                    // Return the stream to the start
-                    _ = slackStream.Seek(0, SeekOrigin.Begin);
-                    // Read the stream into a byte array
-                    byte[] slackBytes;
-                    using (var reader = new StreamReader(slackStream)) {
-                        slackBytes = System.Text.Encoding.UTF8.GetBytes(reader.ReadToEnd());
-                    }
+                    // Read the response content into a byte array
+                    response.Content.ReadAsByteArrayAsync().Wait();
+                    // Read out the response byte array
+                    byte[] slackBytes = response.Content.ReadAsByteArrayAsync().Result;
                     // Convert the byte array to a base64 string
                     Base64 = Convert.ToBase64String(slackBytes);
                     Logger.Debug("ToBase64 - Successfully SlackURL [{SlackURL}] to to Base64", SlackURL);
