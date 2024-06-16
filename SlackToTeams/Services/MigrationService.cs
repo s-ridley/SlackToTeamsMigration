@@ -545,7 +545,7 @@ namespace SlackToTeams.Services {
                             _logger.LogDebug("Processing channel:{channelName} folder:{slackExportPath}", channel.DisplayName, slackChannelFilesPath);
 
                             string htmlFile = Path.Combine(slackChannelFilesPath, "export.html");
-                            StartHtml(htmlFile);
+                            HtmlHelper.StartHtml(htmlFile);
 
                             foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath, "*.json")) {
                                 _logger.LogDebug("Processing file:{file}", file);
@@ -575,7 +575,7 @@ namespace SlackToTeams.Services {
                                             _logger.LogDebug("Processing message sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
                                             chatMessage = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
                                         }
-                                        ChatMessageToHtml(htmlFile, chatMessage);
+                                        HtmlHelper.MessageToHtml(htmlFile, message);
                                     }
                                 }
                                 try {
@@ -591,7 +591,7 @@ namespace SlackToTeams.Services {
                                 }
                             }
 
-                            EndHtml(htmlFile);
+                            HtmlHelper.EndHtml(htmlFile);
                         } else {
                             Console.ForegroundColor = ConsoleColor.Red;
                             Console.WriteLine($"Channel folder does not exist :{slackChannelFilesPath}");
@@ -1115,62 +1115,6 @@ namespace SlackToTeams.Services {
                 Console.WriteLine($"Error adding attachment to message: {ex.Message}");
                 Console.ResetColor();
                 _logger.LogError(ex, "AddAttachmentsToMessage - Error adding attachment to message TeamID[{teamId}] ChannelID[{channelId}] error:{errorMessage}", teamId, channelId, ex.Message);
-            }
-        }
-
-        #endregion
-
-        #endregion
-        #region HTML Export
-
-        #region Method - StartHtml
-
-        static void StartHtml(string htmlFilePath) {
-            if (
-                !string.IsNullOrEmpty(htmlFilePath) &&
-                !File.Exists(htmlFilePath)
-            ) {
-                File.WriteAllText(htmlFilePath, $"<!DOCTYPE html>{Environment.NewLine}");
-                File.AppendAllText(htmlFilePath, $"<html>{Environment.NewLine}");
-                File.AppendAllText(htmlFilePath, $"<body>{Environment.NewLine}");
-            }
-        }
-
-        #endregion
-        #region Method - ChatMessageToHtml
-
-        static void ChatMessageToHtml(string htmlFilePath, ChatMessage? chatMessage) {
-            if (
-                !string.IsNullOrEmpty(htmlFilePath) &&
-                File.Exists(htmlFilePath) &&
-                chatMessage != null &&
-                chatMessage.Body != null &&
-                !string.IsNullOrWhiteSpace(chatMessage.Body.Content)
-            ) {
-                File.AppendAllText(htmlFilePath, $"<div>{Environment.NewLine}");
-                File.AppendAllText(htmlFilePath, $"<div id=\"{chatMessage.Id}\">{Environment.NewLine}");
-
-                File.AppendAllText(htmlFilePath, $"<span id=\"user_id\" style=\"font-weight:bold;\">{chatMessage.From?.User?.DisplayName}</span>");
-                File.AppendAllText(htmlFilePath, $"&nbsp;");
-                File.AppendAllText(htmlFilePath, $"<span id=\"epoch_time\" style=\"font-weight:lighter;\">{chatMessage.CreatedDateTime?.DateTime.ToString("G")}</span>{Environment.NewLine}");
-                File.AppendAllText(htmlFilePath, $"<div id=\"message_text\" style=\"font-weight:normal;white-space:pre-wrap;\">{chatMessage.Body.Content}</div>{Environment.NewLine}");
-
-                File.AppendAllText(htmlFilePath, $"</div>{Environment.NewLine}");
-                File.AppendAllText(htmlFilePath, $"</div>{Environment.NewLine}");
-                File.AppendAllText(htmlFilePath, $"<hr>{Environment.NewLine}");
-            }
-        }
-
-        #endregion
-        #region Method - EndHtml
-
-        static void EndHtml(string htmlFilePath) {
-            if (
-                !string.IsNullOrEmpty(htmlFilePath) &&
-                File.Exists(htmlFilePath)
-            ) {
-                File.AppendAllText(htmlFilePath, $"</html>{Environment.NewLine}");
-                File.AppendAllText(htmlFilePath, $"</body>{Environment.NewLine}");
             }
         }
 

@@ -1,11 +1,9 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Net.Mail;
 using System.Text;
 using System.Web;
 using Microsoft.Graph.Models;
-using Serilog;
 using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
@@ -74,11 +72,7 @@ namespace SlackToTeams.Models {
         #region Method - FormattedText
 
         private string FormattedText() {
-            StringBuilder stringBuilder = new(Text.TrimEnd());
-
-            stringBuilder.Replace("\n", "<br>");
-
-            return stringBuilder.ToString();
+            return Text.TrimEnd().Replace("\n", "<br>");
         }
 
         #endregion
@@ -163,6 +157,44 @@ namespace SlackToTeams.Models {
                 foreach (var hostedContent in HostedContents) {
                     _ = formattedText.Append($"<span><img src=\"../hostedContents/{tempId}/$value\"></span>");
                     tempId++;
+                }
+            }
+
+            return formattedText.ToString();
+        }
+
+        #endregion
+        #region Method - HtmlReactions
+
+        public string HtmlReactions() {
+            StringBuilder formattedText = new();
+            if (
+                Reactions != null &&
+                Reactions.Count > 0
+            ) {
+                foreach (var reaction in Reactions) {
+                    Mentions ??= [];
+                    Mentions.Add(reaction.User);
+                    _ = formattedText.Append($"[{reaction.Emoji}] {reaction.User.DisplayName}{Environment.NewLine}");
+                }
+            }
+
+            return formattedText.ToString();
+        }
+
+        #endregion
+        #region Method - HtmlHostedContents
+
+        public string HtmlHostedContents() {
+            StringBuilder formattedText = new();
+            if (
+                HostedContents != null &&
+                HostedContents.Count > 0
+            ) {
+                foreach (var hostedContent in HostedContents) {
+                    if (hostedContent.ContentBytes != null) {
+                        _ = formattedText.Append($"<img src=\"data:image/png;base64, {Convert.ToBase64String(hostedContent.ContentBytes)}\">");
+                    }
                 }
             }
 

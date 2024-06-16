@@ -44,6 +44,31 @@ namespace SlackToTeams.Utils {
         }
 
         #endregion
+        #region Method - SlackToEmoji
+
+        public static string? SlackToEmoji(string? slackReaction) {
+            string? result = null;
+
+            if (!string.IsNullOrWhiteSpace(slackReaction)) {
+                result = slackReaction switch {
+                    "+1" => Emoji.ThumbsUp,
+                    "grimacing" => Emoji.GrimacingFace,
+                    "man-bowing" => Emoji.Bowling,
+                    "money_mouth_face" => Emoji.MoneyMouthFace,
+                    "ok_hand" => Emoji.OKHand,
+                    "rocket" => Emoji.Rocket,
+                    "rolling_on_the_floor_laughing" => Emoji.RollingOnTheFloorLaughing,
+                    "smirk" or "vee" => Emoji.SmirkingFace,
+                    "sunglasses" => Emoji.Sunglasses,
+                    "wave" => Emoji.WavingHand,
+                    _ => slackReaction,
+                };
+            }
+
+            return result;
+        }
+
+        #endregion
         #region Method - SlackToTeamsReaction
 
         public static string? SlackToTeamsReaction(string? slackReaction) {
@@ -51,19 +76,13 @@ namespace SlackToTeams.Utils {
 
             if (!string.IsNullOrWhiteSpace(slackReaction)) {
                 // result can be one of : like, angry, sad, laugh, heart, surprised
-
-                // man-bowing
-                // money_mouth_face
-                // rocket
-                // rolling_on_the_floor_laughing
-                // grimacing
-                // sunglasses
-                // wave
-
                 result = slackReaction switch {
+                    "wave" => "angry",
+                    "sunglasses" => "sad",
                     "rolling_on_the_floor_laughing" => "laugh",
-                    "ok_hand" or "smirk" or "vee" or "+1" => "like",
-                    _ => slackReaction,
+                    "man-bowing" => "heart",
+                    "money_mouth_face" => "surprised",
+                    _ => "like",
                 };
             }
 

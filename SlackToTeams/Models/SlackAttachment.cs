@@ -24,7 +24,7 @@ namespace SlackToTeams.Models {
         public DateTimeOffset? Date { get; set; }
         public string? TeamsURL { get; set; }
         public string? TeamsGUID { get; set; }
-        public string? Base64 { get; set; }
+        public byte[]? ContentBytes { get; private set; }
 
         #endregion
         #region Constructors
@@ -69,9 +69,9 @@ namespace SlackToTeams.Models {
         }
 
         #endregion
-        #region Method - ToBase64
+        #region Method - DownloadBytes
 
-        public async Task ToBase64() {
+        public async Task DownloadBytes() {
             if (!string.IsNullOrWhiteSpace(SlackURL)) {
                 HttpClient? client = null;
                 try {
@@ -84,9 +84,9 @@ namespace SlackToTeams.Models {
                     // Read the response content into a byte array
                     response.Content.ReadAsByteArrayAsync().Wait();
                     // Read out the response byte array
-                    byte[] slackBytes = response.Content.ReadAsByteArrayAsync().Result;
+                    ContentBytes = response.Content.ReadAsByteArrayAsync().Result;
                     // Convert the byte array to a base64 string
-                    Base64 = Convert.ToBase64String(slackBytes);
+                    //Base64 = Convert.ToBase64String(slackBytes);
                     Logger.Debug("ToBase64 - Successfully SlackURL [{SlackURL}] to to Base64", SlackURL);
                     Console.WriteLine("Successfully converted to Base64");
                 } catch (System.Net.WebException ex) {

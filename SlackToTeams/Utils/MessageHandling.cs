@@ -78,14 +78,17 @@ namespace SlackToTeams.Utils {
                                         attachment.MimeType.StartsWith("image/")
                                     ) {
                                         // Download the file and convert to base64
-                                        attachment.ToBase64().Wait();
-                                        if (!string.IsNullOrWhiteSpace(attachment.Base64)) {
+                                        attachment.DownloadBytes().Wait();
+                                        if (
+                                            attachment.ContentBytes != null &&
+                                            attachment.ContentBytes.Length > 0
+                                        ) {
                                             // Add a SlackHostedContent object to the message
                                             hostedContents ??= [];
                                             hostedContents.Add(
                                                 new SlackHostedContent(
-                                                    System.Text.Encoding.UTF8.GetBytes(attachment.Base64),  // contentBytes
-                                                    attachment.MimeType                                     // contentType
+                                                    attachment.ContentBytes,    // contentBytes
+                                                    attachment.MimeType         // contentType
                                                 )
                                             );
                                         }
@@ -202,7 +205,6 @@ namespace SlackToTeams.Utils {
             ) {
                 foreach (JToken reaction in reactionsArray) {
                     string? name = reaction.SelectToken("name")?.ToString();
-                    name = ConvertHelper.SlackToTeamsReaction(name);
                     if (!string.IsNullOrWhiteSpace(name)) {
                         var usersArray = reaction.SelectTokens("users[*]").ToList();
                         if (
