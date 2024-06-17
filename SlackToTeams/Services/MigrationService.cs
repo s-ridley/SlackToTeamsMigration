@@ -380,7 +380,7 @@ namespace SlackToTeams.Services {
                                             attachment != null &&
                                             !string.IsNullOrWhiteSpace(attachment.MimeType) &&
                                             !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                                            !attachment.MimeType.StartsWith("image/")
+                                            !GraphHelper.ValidHostedContent(attachment.MimeType)
                                         ) {
                                             await UploadFileToPath(graphHelper, teamID, channel.DisplayName, attachment);
                                         }
@@ -561,7 +561,7 @@ namespace SlackToTeams.Services {
                                                     attachment != null &&
                                                     !string.IsNullOrWhiteSpace(attachment.MimeType) &&
                                                     !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                                                    !attachment.MimeType.StartsWith("image/")
+                                                    !GraphHelper.ValidHostedContent(attachment.MimeType)
                                                 ) {
                                                     // If so upload to teams drive
                                                     await attachment.DownloadFile(

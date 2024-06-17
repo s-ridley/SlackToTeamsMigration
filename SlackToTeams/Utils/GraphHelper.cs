@@ -10,12 +10,15 @@ using Microsoft.Graph.Models;
 using Microsoft.Identity.Client;
 using Microsoft.Kiota.Abstractions.Authentication;
 using Newtonsoft.Json;
+using Serilog;
 using SlackToTeams.Models;
 using DriveUpload = Microsoft.Graph.Drives.Item.Items.Item.CreateUploadSession;
 
 namespace SlackToTeams.Utils {
     public partial class GraphHelper {
         #region Fields
+
+        private static readonly ILogger s_logger = Log.ForContext(typeof(GraphHelper));
 
         private static readonly string[] s_scopes = [
             "User.Read", "Group.ReadWrite.All"
@@ -87,6 +90,7 @@ namespace SlackToTeams.Utils {
                 result = await App.AcquireTokenForClient(Scopes)
                     .ExecuteAsync();
             } catch (MsalServiceException ex) when (ex.Message.Contains("AADSTS70011")) {
+                s_logger.Error(ex, "Scope provided is not supported error:{errorMessage}", ex.Message);
                 // Invalid scope. The scope has to be of the form "https://resourceurl/.default"
                 // Mitigation: change the scope to be as expected
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -113,6 +117,7 @@ namespace SlackToTeams.Utils {
                 result = await App.AcquireTokenForClient(Scopes)
                     .ExecuteAsync();
             } catch (MsalServiceException ex) when (ex.Message.Contains("AADSTS70011")) {
+                s_logger.Error(ex, "Scope provided is not supported error:{errorMessage}", ex.Message);
                 // Invalid scope. The scope has to be of the form "https://resourceurl/.default"
                 // Mitigation: change the scope to be as expected
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -477,6 +482,7 @@ namespace SlackToTeams.Utils {
                     var uploadResult = await fileUploadTask.UploadAsync(progress);
                     if (uploadResult != null) {
                         if (!uploadResult.UploadSucceeded) {
+                            s_logger.Error("Upload failed:{SlackURL}:", attachment.SlackURL);
                             Console.WriteLine($"Upload failed: {attachment.SlackURL}");
                         }
                         if (uploadResult.ItemResponse != null) {
@@ -493,9 +499,11 @@ namespace SlackToTeams.Utils {
                         }
                     }
                 } catch (ServiceException ex) {
+                    s_logger.Error(ex, "Error uploading error:{errorMessage}", ex.Message);
                     Console.WriteLine($"Error uploading: {ex}");
                 }
             } else {
+                s_logger.Warning("Failed to find root drive for team:{teamID}:", teamID);
                 Console.WriteLine($"Failed to find root drive for team:{teamID}:");
             }
         }
@@ -525,6 +533,26 @@ namespace SlackToTeams.Utils {
                 };
 
                 _ = await UserGraphClient.Teams[teamID].Channels[channelID].Messages[message.TeamID].Replies.PostAsync(msg);
+            }
+        }
+
+        #endregion
+
+        #endregion
+        #region Validataion
+
+        #region Method - ValidHostedContent
+
+        public static bool ValidHostedContent(string mimetype) {
+            if (!string.IsNullOrWhiteSpace(mimetype)) {
+                return mimetype switch {
+                    "image/gif" => true,
+                    "image/jpeg" => true,
+                    "image/png" => true,
+                    _ => false,
+                };
+            } else {
+                return false;
             }
         }
 

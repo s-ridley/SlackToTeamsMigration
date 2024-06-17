@@ -1,5 +1,6 @@
 ﻿using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
+using Serilog;
 
 namespace SlackToTeams.Utils {
     /// <summary>
@@ -10,6 +11,11 @@ namespace SlackToTeams.Utils {
     /// </remarks>
     /// <param name="httpClient">HttpClient used to call the protected API</param>
     public class ProtectedApiCallHelper(HttpClient httpClient) {
+        #region Fields
+
+        private static readonly ILogger s_logger = Log.ForContext(typeof(ProtectedApiCallHelper));
+
+        #endregion
         #region Method - Properties
 
         protected HttpClient HTTPClient { get; private set; } = httpClient;
@@ -37,10 +43,12 @@ namespace SlackToTeams.Utils {
                     Console.ForegroundColor = ConsoleColor.Gray;
                     return result;
                 } else {
+                    s_logger.Error("Failed to call the web API - URL:{webApiUrl} StatusCode:{statusCode}", webApiUrl, response.StatusCode);
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"Failed to call the web API: {response.StatusCode}");
                     string content = await response.Content.ReadAsStringAsync();
 
+                    s_logger.Error("Called - URL:{webApiUrl} content:{content}", content);
                     // Note that if you got response.Code == 403 and response.content.code == "Authorization_RequestDenied"
                     // this is because the tenant admin as not granted consent for the application to call the Web API
                     Console.WriteLine($"Content: {content}");
@@ -76,10 +84,12 @@ namespace SlackToTeams.Utils {
                 return response;
             }
 
+            s_logger.Error("Failed to call the web API - URL:{webApiUrl} StatusCode:{statusCode}", webApiUrl, response.StatusCode);
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"Failed to call the web API: {response.StatusCode}");
             string responseContent = await response.Content.ReadAsStringAsync();
 
+            s_logger.Error("Called - URL:{webApiUrl} content:{content}", responseContent);
             // Note that if you got response.Code == 403 and response.content.code == "Authorization_RequestDenied"
             // this is because the tenant admin as not granted consent for the application to call the Web API
             Console.WriteLine($"Content: {responseContent}");

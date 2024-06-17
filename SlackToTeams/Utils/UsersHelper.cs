@@ -3,10 +3,16 @@
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using SlackToTeams.Models;
 
 namespace SlackToTeams.Utils {
     public class UsersHelper {
+        #region Fields
+
+        private static readonly ILogger s_logger = Log.ForContext(typeof(UsersHelper));
+
+        #endregion
         #region Constants
 
         public const string USER_LIST_FILE = "settings/userList.json";
@@ -79,7 +85,8 @@ namespace SlackToTeams.Utils {
                     if (!string.IsNullOrEmpty(userId)) {
                         user.SetTeamUserID(userId);
                     }
-                } catch (Exception) {
+                } catch (Exception ex) {
+                    s_logger.Error(ex, "Error getting team user by email:{email}", user.Email);
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"Error getting team user by email: {user.Email}");
                     Console.ResetColor();
@@ -126,11 +133,13 @@ namespace SlackToTeams.Utils {
 
                 return (List<SlackUser>?)userList ?? [];
             } catch (FileNotFoundException ex) {
+                s_logger.Error(ex, "No existing userList:{userList}", USER_LIST_FILE);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine("No existing userList!");
                 Console.WriteLine(ex);
                 Console.ResetColor();
             } catch (Exception ex) {
+                s_logger.Error(ex, "Error loading userList:{userList}", USER_LIST_FILE);
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(ex);
                 Console.ResetColor();

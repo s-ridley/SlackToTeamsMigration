@@ -86,7 +86,7 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.Name) &&
                         !string.IsNullOrWhiteSpace(attachment.MimeType) &&
                         !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                        !attachment.MimeType.StartsWith("image/")
+                        !GraphHelper.ValidHostedContent(attachment.MimeType)
                     ) {
                         _ = formattedText.Append($"[{attachment.Name}]<br>");
                     }
@@ -125,9 +125,15 @@ namespace SlackToTeams.Models {
                 Reactions.Count > 0
             ) {
                 foreach (var reaction in Reactions) {
-                    Mentions ??= [];
-                    Mentions.Add(reaction.User);
-                    _ = formattedText.Append($"{reaction.Emoji} <at id=\"{Mentions.Count}\">{reaction.User.DisplayName}</at><br>");
+                    if (reaction.User != null) {
+                        if (!string.IsNullOrWhiteSpace(reaction.User.TeamsUserID)) {
+                            Mentions ??= [];
+                            Mentions.Add(reaction.User);
+                            _ = formattedText.Append($"{reaction.Emoji} <at id=\"{Mentions.Count}\">{reaction.User.DisplayName}</at><br>");
+                        } else {
+                            _ = formattedText.Append($"{reaction.Emoji} {reaction.User.DisplayName}<br>");
+                        }
+                    }
                 }
             }
 
@@ -165,7 +171,7 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.Name) &&
                         !string.IsNullOrWhiteSpace(attachment.MimeType) &&
                         !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                        !attachment.MimeType.StartsWith("image/")
+                        !GraphHelper.ValidHostedContent(attachment.MimeType)
                     ) {
                         _ = formattedText.Append($"{attachment.Name}{Environment.NewLine}");
                     }
@@ -185,9 +191,9 @@ namespace SlackToTeams.Models {
                 Reactions.Count > 0
             ) {
                 foreach (var reaction in Reactions) {
-                    Mentions ??= [];
-                    Mentions.Add(reaction.User);
-                    _ = formattedText.Append($"{reaction.Emoji} {reaction.User.DisplayName}{Environment.NewLine}");
+                    if (reaction.User != null) {
+                        _ = formattedText.Append($"{reaction.Emoji} {reaction.User.DisplayName}{Environment.NewLine}");
+                    }
                 }
             }
 

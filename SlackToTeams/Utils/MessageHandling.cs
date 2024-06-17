@@ -5,10 +5,16 @@ using System.Text;
 using System.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Serilog;
 using SlackToTeams.Models;
 
 namespace SlackToTeams.Utils {
     public class MessageHandling {
+        #region Fields
+
+        private static readonly ILogger s_logger = Log.ForContext(typeof(MessageHandling));
+
+        #endregion
         #region Method - GetFilesForChannel
 
         public static IEnumerable<string> GetFilesForChannel(string channelPath, string searchPattern) {
@@ -21,6 +27,7 @@ namespace SlackToTeams.Utils {
         #region Method - GetMessagesForDay
 
         public static IEnumerable<SlackMessage> GetMessagesForDay(string channel, string path, List<SlackChannel> channels, List<SlackUser> users) {
+            s_logger.Debug("Getting messaged for channel:{channel} from file:{path}", channel, path);
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"Channel {channel} File {path}");
             Console.ResetColor();
@@ -75,7 +82,7 @@ namespace SlackToTeams.Utils {
                                     if (
                                         attachment != null &&
                                         !string.IsNullOrWhiteSpace(attachment.MimeType) &&
-                                        attachment.MimeType.StartsWith("image/")
+                                        GraphHelper.ValidHostedContent(attachment.MimeType)
                                     ) {
                                         // Download the file and convert to base64
                                         attachment.DownloadBytes().Wait();
@@ -116,6 +123,7 @@ namespace SlackToTeams.Utils {
                     }
                 }
             } else {
+                s_logger.Warning("{path} is not valid", path);
                 Console.ForegroundColor = ConsoleColor.Gray;
                 Console.WriteLine($"{path} is not valid");
                 Console.ResetColor();
@@ -215,7 +223,7 @@ namespace SlackToTeams.Utils {
                         SlackUser userFound = FindUser(userList, userID);
 
                         if (userFound != null) {
-                            if (userFound.TeamsUserID != null) {
+                            if (!string.IsNullOrWhiteSpace(userFound.TeamsUserID)) {
                                 mentions ??= [];
                                 mentions.Add(userFound);
                                 messageText = $"<at id=\"{mentions.Count}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at> has joined the channel";
@@ -269,16 +277,14 @@ namespace SlackToTeams.Utils {
                                     SlackUser userFound = FindUser(userList, userId);
 
                                     if (userFound != null) {
-                                        if (userFound.TeamsUserID != null) {
-                                            reactions ??= [];
-                                            reactions.Add(
-                                                new SlackReaction(
-                                                    null,       // createdDateTime
-                                                    name,       // reactionType
-                                                    userFound   // user
-                                                )
-                                            );
-                                        }
+                                        reactions ??= [];
+                                        reactions.Add(
+                                            new SlackReaction(
+                                                null,       // createdDateTime
+                                                name,       // reactionType
+                                                userFound   // user
+                                            )
+                                        );
                                     }
                                 }
                             }
@@ -353,7 +359,7 @@ namespace SlackToTeams.Utils {
                         SlackUser userFound = FindUser(userList, userID);
 
                         if (userFound != null) {
-                            if (userFound.TeamsUserID != null) {
+                            if (!string.IsNullOrWhiteSpace(userFound.TeamsUserID)) {
                                 mentions ??= [];
                                 mentions.Add(userFound);
                                 _ = formattedText.Append($"<at id=\"{mentions.Count}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at>");
@@ -391,7 +397,7 @@ namespace SlackToTeams.Utils {
                                     _ = formattedText.Append($"</span>");
                                 }
                             } catch (Exception ex) {
-                                Console.WriteLine(ex.Message);
+                                s_logger.Error(ex, "Error coverting emoji error:{errorMessage}", ex.Message);
                             }
                         }
                         break;
@@ -410,6 +416,7 @@ namespace SlackToTeams.Utils {
                         // This is used to send a message to one or more channels. Does not have equvialent in Teams so will ignore
                         break;
                     default:
+                        s_logger.Warning("{type} not taken into account!", type);
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine($"{type} not taken into account!");
                         Console.ResetColor();
