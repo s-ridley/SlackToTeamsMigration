@@ -85,7 +85,7 @@ namespace SlackToTeams.Models {
                 try {
                     client = new();
                     Logger.Debug("ToBase64 - Converting SlackURL [{SlackURL}] to Base64", SlackURL);
-                    Console.WriteLine("Converting SlackURL \"{0}\" to Base64", SlackURL);
+                    Console.WriteLine("Converting \"{0}\" from Slack to Base64", Name);
                     var response = await client.GetAsync($"{SlackURL}");
                     // Make sure the response is a success 
                     _ = response.EnsureSuccessStatusCode();
@@ -135,7 +135,7 @@ namespace SlackToTeams.Models {
                     try {
                         client = new();
                         Logger.Debug("DownloadFile - Downloading SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, fullFilePath);
-                        Console.WriteLine("Downloading SlackURL \"{0}\" to \"{1}\" .......\n\n", SlackURL, fullFilePath);
+                        Console.WriteLine("Downloading \"{0}\" from Slack to \"{1}\" .......\n\n", Name, fullFilePath);
                         var response = await client.GetAsync($"{SlackURL}");
                         // Make sure the response is a success 
                         _ = response.EnsureSuccessStatusCode();
@@ -148,7 +148,7 @@ namespace SlackToTeams.Models {
                         // Copy slackFileStream to fileStream
                         await slackStream.CopyToAsync(fileStream);
                         Logger.Debug("DownloadFile - Successfully Downloaded SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, fullFilePath);
-                        Console.WriteLine("Successfully Downloaded SlackURL \"{0}\" to \"{1}\"", SlackURL, fullFilePath);
+                        Console.WriteLine("Successfully Downloaded \"{0}\" from Slack to \"{1}\"", Name, fullFilePath);
                     } catch (System.Net.WebException ex) {
                         Logger.Error(ex, "DownloadFile - Error downloading SlackURL [{SlackURL}] to [{fullFilePath}] error:{errorMessage}", SlackURL, fullFilePath, ex.Message);
                         Console.ForegroundColor = ConsoleColor.Red;
