@@ -8,7 +8,14 @@ namespace SlackToTeams.Models {
     public class SlackUser {
         #region Fields
 
-        public static readonly SlackUser SLACK_BOT = BotUser("USLACKBOT", "Slack Bot");
+        public static readonly SlackUser SLACK_BOT = BotUser(SLACK_BOT_ID, SLACK_BOT_NAME);
+
+        #endregion
+        #region Constants
+
+        public const string SLACK_BOT_ID = "USLACKBOT";
+        public const string SLACK_BOT_NAME = "Slack Bot";
+        public const string UNKNOWN_NAME = "Unknown";
 
         #endregion
         #region Properties
@@ -23,22 +30,21 @@ namespace SlackToTeams.Models {
         #region Constructors
 
         [JsonConstructor]
-        public SlackUser(string slackUserID, string? teamsUserID, string? displayName, string? email, bool isBot) {
-            SlackUserID = slackUserID;
+        public SlackUser(string? slackUserID, string? teamsUserID, string? displayName, string? email, bool isBot) {
+            SlackUserID = slackUserID ?? SLACK_BOT_ID;
             TeamsUserID = teamsUserID ?? string.Empty;
-
-            DisplayName = displayName ?? "Unknown";
+            DisplayName = displayName ?? UNKNOWN_NAME;
             Email = email;
             IsBot = isBot;
         }
 
-        public SlackUser(string slackUserID, string? displayName, string? email, bool isBot) : this(slackUserID, string.Empty, displayName, email, isBot) {
+        public SlackUser(string? slackUserID, string? displayName, string? email, bool isBot) : this(slackUserID, string.Empty, displayName, email, isBot) {
         }
 
         #endregion
         #region Method - BotUser
 
-        public static SlackUser BotUser(string slackUserID, string? displayName) {
+        public static SlackUser BotUser(string? slackUserID, string? displayName) {
             return new SlackUser(slackUserID, displayName, string.Empty, true);
         }
 
@@ -67,7 +73,7 @@ namespace SlackToTeams.Models {
             return new ChatMessageFromIdentitySet {
                 User = new Identity {
                     Id = TeamsUserID ?? null,
-                    DisplayName = DisplayName ?? "Unknown"
+                    DisplayName = DisplayName ?? UNKNOWN_NAME
                 }
             };
         }
@@ -79,7 +85,7 @@ namespace SlackToTeams.Models {
             return new ChatMessageMentionedIdentitySet {
                 User = new Identity {
                     Id = TeamsUserID ?? null,
-                    DisplayName = DisplayName ?? "Unknown"
+                    DisplayName = DisplayName ?? UNKNOWN_NAME
                 }
             };
         }
@@ -91,7 +97,7 @@ namespace SlackToTeams.Models {
             return new ChatMessageReactionIdentitySet {
                 User = new Identity {
                     Id = TeamsUserID ?? null,
-                    DisplayName = DisplayName ?? "Unknown"
+                    DisplayName = DisplayName ?? UNKNOWN_NAME
                 }
             };
         }

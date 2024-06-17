@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Collections.Generic;
 using System.Text;
 using System.Web;
 using Newtonsoft.Json;
@@ -175,34 +176,11 @@ namespace SlackToTeams.Utils {
                                     !string.IsNullOrEmpty(fieldTitle) &&
                                     !string.IsNullOrEmpty(fieldValue)
                                 ) {
-                                    // Search for usernames
-                                    string[] fieldValueNames = fieldValue.Split("<@");
-                                    if (
-                                        fieldValueNames != null &&
-                                        fieldValueNames.Length > 0
-                                    ) {
-                                        foreach (var fieldToken in fieldValueNames) {
-                                            if (
-                                                !string.IsNullOrEmpty(fieldToken) &&
-                                                fieldToken.Contains('>')
-                                            ) {
-                                                string fieldTokenSlackId = fieldToken.Substring(0, fieldToken.IndexOf('>')).Trim();
-
-                                                SlackUser fieldTokenUser = FindUser(userList, fieldTokenSlackId);
-
-                                                if (
-                                                    fieldTokenUser != null &&
-                                                    !fieldTokenUser.IsBot &&
-                                                    !string.IsNullOrEmpty(fieldTokenUser.DisplayName)
-                                                ) {
-                                                    fieldValue = fieldValue.Replace($"<@{fieldTokenSlackId}>", $"[{fieldTokenUser.DisplayName}]");
-                                                }
-                                            }
-                                        }
-                                        formattedText.AppendLine($"<strong>{fieldTitle}:</strong> {fieldValue}");
-                                    } else {
-                                        formattedText.AppendLine($"<strong>{fieldTitle}:</strong> {fieldValue}");
-                                    }
+                                    fieldValue = ConvertHelper.ReplaceUserIdWithName(
+                                        fieldValue, // textToCheck
+                                        userList
+                                    );
+                                    formattedText.AppendLine($"<strong>{HttpUtility.HtmlEncode(fieldTitle)}:</strong> {HttpUtility.HtmlEncode(fieldValue)}");
                                 }
                             }
                         }
@@ -220,7 +198,7 @@ namespace SlackToTeams.Utils {
                             break;
                         }
 
-                        SlackUser userFound = FindUser(userList, userID);
+                        SlackUser userFound = UsersHelper.FindUser(userList, userID);
 
                         if (userFound != null) {
                             if (!string.IsNullOrWhiteSpace(userFound.TeamsUserID)) {
@@ -253,6 +231,11 @@ namespace SlackToTeams.Utils {
                     // Simple text, get it directly from text field
                     string? text = obj.SelectToken("text")?.ToString();
                     if (!string.IsNullOrWhiteSpace(text)) {
+                        text = ConvertHelper.ReplaceUserIdWithName(
+                            text, // textToCheck
+                            userList
+                        );
+
                         messageText = HttpUtility.HtmlEncode(text);
                     }
                 }
@@ -274,7 +257,7 @@ namespace SlackToTeams.Utils {
                             foreach (JToken user in usersArray) {
                                 string? userId = user.ToString();
                                 if (!string.IsNullOrWhiteSpace(userId)) {
-                                    SlackUser userFound = FindUser(userList, userId);
+                                    SlackUser userFound = UsersHelper.FindUser(userList, userId);
 
                                     if (userFound != null) {
                                         reactions ??= [];
@@ -292,6 +275,7 @@ namespace SlackToTeams.Utils {
                     }
                 }
             }
+
             return (messageText, mentions, reactions);
         }
 
@@ -308,6 +292,10 @@ namespace SlackToTeams.Utils {
                         text = token.SelectToken("text")?.ToString();
 
                         if (!string.IsNullOrEmpty(text)) {
+                            text = ConvertHelper.ReplaceUserIdWithName(
+                                text,       // textToCheck
+                                userList
+                            );
                             text = HttpUtility.HtmlEncode(text);
                             var style = token.SelectToken("style");
                             if (style != null) {
@@ -356,7 +344,7 @@ namespace SlackToTeams.Utils {
                             break;
                         }
 
-                        SlackUser userFound = FindUser(userList, userID);
+                        SlackUser userFound = UsersHelper.FindUser(userList, userID);
 
                         if (userFound != null) {
                             if (!string.IsNullOrWhiteSpace(userFound.TeamsUserID)) {
@@ -430,27 +418,19 @@ namespace SlackToTeams.Utils {
         #region Method - FindMessageSender
 
         static SlackUser? FindMessageSender(JObject obj, List<SlackUser> userList) {
-            string? subtype = obj.SelectToken("subtype")?.ToString();
-            if (
-                !string.IsNullOrEmpty(subtype) &&
-                string.Equals(subtype, "bot_message", StringComparison.CurrentCultureIgnoreCase)
-            ) {
-                string? username = obj.SelectToken("username")?.ToString();
-                string? botId = obj.SelectToken("bot_id")?.ToString();
-                if (!string.IsNullOrEmpty(botId)) {
-                    return SlackUser.BotUser(botId, username);
+            string? userId = obj.SelectToken("user")?.ToString();
+            string? username = obj.SelectToken("username")?.ToString();
+            string? botId = obj.SelectToken("bot_id")?.ToString();
+
+            if (!string.IsNullOrEmpty(userId)) {
+                if (userId == SlackUser.SLACK_BOT_ID) {
+                    return SlackUser.SLACK_BOT;
+                } else {
+                    return userList.FirstOrDefault(user => user.SlackUserID == userId);
                 }
             } else {
-                var userID = obj.SelectToken("user")?.ToString();
-
-                if (!string.IsNullOrEmpty(userID)) {
-                    if (userID == "USLACKBOT") {
-                        return SlackUser.SLACK_BOT;
-                    }
-                    return userList.FirstOrDefault(user => user.SlackUserID == userID);
-                }
+                return SlackUser.BotUser(botId, username);
             }
-            return null;
         }
 
         #endregion
@@ -465,19 +445,6 @@ namespace SlackToTeams.Utils {
             }
 
             return "Unknown Channel";
-        }
-
-        #endregion
-        #region Method - DisplayNameFromUserID
-
-        static SlackUser FindUser(List<SlackUser> userList, string userID) {
-            if (userID != "USLACKBOT") {
-                var simpleUser = userList.FirstOrDefault(user => user.SlackUserID == userID);
-                if (simpleUser != null) {
-                    return simpleUser;
-                }
-            }
-            return SlackUser.SLACK_BOT;
         }
 
         #endregion

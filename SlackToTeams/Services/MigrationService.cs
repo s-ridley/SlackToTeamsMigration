@@ -16,8 +16,8 @@ namespace SlackToTeams.Services {
         #endregion
         #region Constants
 
-        public const string ActionFind = "finding";
-        public const string ActionCreate = "creating";
+        public const string ACTION_FIND = "finding";
+        public const string ACTION_CREATE = "creating";
 
         #endregion
         #region Constructors
@@ -833,13 +833,13 @@ namespace SlackToTeams.Services {
                 teamId = await graphHelper.GetTeamByNameAsync(teamName);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error {ActionFind} team:{teamName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
+                Console.WriteLine($"Error {ACTION_FIND} team:{teamName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "GetTeamByName - Error {ActionFind} Team {teamName} code:{errorCode} message:{errorMessage}", ActionFind, teamName, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "GetTeamByName - Error {ACTION_FIND} Team {teamName} code:{errorCode} message:{errorMessage}", ACTION_FIND, teamName, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error {ActionFind} Team {teamName}: {ex.Message}");
+                Console.WriteLine($"Error {ACTION_FIND} Team {teamName}: {ex.Message}");
                 Console.ResetColor();
                 _logger.LogError(ex, "GetTeamByName - Could not find team by name :{teamName}", teamName);
                 Environment.Exit(1);
@@ -867,7 +867,7 @@ namespace SlackToTeams.Services {
 
             string? teamId = string.Empty;
             string teamName = "";
-            string actionName = ActionFind;
+            string actionName = ACTION_FIND;
 
             try {
                 // Get the team name
@@ -888,7 +888,7 @@ namespace SlackToTeams.Services {
                     if (string.IsNullOrWhiteSpace(teamId)) {
                         string json = JsonConvert.SerializeObject(team);
                         teamId = await graphHelper.CreateTeamAsync(json);
-                        actionName = ActionCreate;
+                        actionName = ACTION_CREATE;
 
                         _logger.LogDebug("Team creation result {teamId}", teamId);
                     }
@@ -1003,7 +1003,7 @@ namespace SlackToTeams.Services {
         private async Task<string?> CreateChannel(GraphHelper graphHelper, string teamID, SlackChannel channel) {
             _logger.LogDebug("CreateChannel - Start");
             string? channelId = string.Empty;
-            string actionName = ActionFind;
+            string actionName = ACTION_FIND;
 
             if (channel != null) {
                 try {
@@ -1013,7 +1013,7 @@ namespace SlackToTeams.Services {
                     // If not found then create
                     if (string.IsNullOrWhiteSpace(channelId)) {
                         channelId = await graphHelper.CreateChannelAsync(teamID, channel);
-                        actionName = ActionCreate;
+                        actionName = ACTION_CREATE;
                         _logger.LogDebug("CreateChannel - Created channel ID[{channelId}]", channelId);
                     }
                 } catch (Exception ex) {

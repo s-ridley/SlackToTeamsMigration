@@ -149,5 +149,18 @@ namespace SlackToTeams.Utils {
         }
 
         #endregion
+        #region Method - FindUser
+
+        public static SlackUser FindUser(List<SlackUser> userList, string userID) {
+            if (userID != SlackUser.SLACK_BOT_ID) {
+                var simpleUser = userList.FirstOrDefault(user => user.SlackUserID == userID);
+                if (simpleUser != null) {
+                    return simpleUser;
+                }
+            }
+            return SlackUser.SLACK_BOT;
+        }
+
+        #endregion
     }
 }

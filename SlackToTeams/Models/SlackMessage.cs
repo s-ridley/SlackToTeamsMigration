@@ -163,7 +163,7 @@ namespace SlackToTeams.Models {
         #region Method - HtmlAttachments
 
         public string HtmlAttachments() {
-            StringBuilder formattedText = new();
+            StringBuilder? formattedText = null;
             if (Attachments != null) {
                 foreach (var attachment in Attachments) {
                     if (
@@ -173,31 +173,41 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
                         !GraphHelper.ValidHostedContent(attachment.MimeType)
                     ) {
+                        formattedText ??= new();
                         _ = formattedText.Append($"{attachment.Name}{Environment.NewLine}");
                     }
                 }
             }
 
-            return formattedText.ToString();
+            if (formattedText != null) {
+                return $"<blockquote>{formattedText}</blockquote>";
+            } else {
+                return "";
+            }
         }
 
         #endregion
         #region Method - HtmlReactions
 
         public string HtmlReactions() {
-            StringBuilder formattedText = new();
+            StringBuilder? formattedText = null;
             if (
                 Reactions != null &&
                 Reactions.Count > 0
             ) {
                 foreach (var reaction in Reactions) {
                     if (reaction.User != null) {
+                        formattedText ??= new();
                         _ = formattedText.Append($"{reaction.Emoji} {reaction.User.DisplayName}{Environment.NewLine}");
                     }
                 }
             }
 
-            return formattedText.ToString();
+            if (formattedText != null) {
+                return $"<blockquote>{formattedText}</blockquote>";
+            } else {
+                return "";
+            }
         }
 
         #endregion
