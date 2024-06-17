@@ -167,7 +167,7 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
                         !attachment.MimeType.StartsWith("image/")
                     ) {
-                        _ = formattedText.Append($"{attachment.Content}{Environment.NewLine}");
+                        _ = formattedText.Append($"{attachment.Name}{Environment.NewLine}");
                     }
                 }
             }
