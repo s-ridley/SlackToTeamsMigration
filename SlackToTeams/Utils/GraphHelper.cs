@@ -422,17 +422,19 @@ namespace SlackToTeams.Utils {
             string driveID = string.Empty;
             if (
                 drives != null &&
-                drives.Items != null
+                !string.IsNullOrWhiteSpace(drives.Id)
+                //Items != null
             ) {
-                foreach (var drive in drives.Items) {
-                    if (
-                        drive.Root != null &&
-                        drive.Id != null
-                    ) {
-                        driveID = drive.Id;
-                        break;
-                    }
-                }
+                //foreach (var drive in drives.Items) {
+                //    if (
+                //        drive.Root != null &&
+                //        drive.Id != null
+                //    ) {
+                //        driveID = drive.Id;
+                //        break;
+                //    }
+                //}
+                driveID = drives.Id;
             }
 
             if (!string.IsNullOrWhiteSpace(driveID)) {
@@ -481,11 +483,11 @@ namespace SlackToTeams.Utils {
                         }
                         if (uploadResult.ItemResponse != null) {
                             if (uploadResult.ItemResponse.WebUrl != null) {
-                                attachment.TeamsURL = uploadResult.ItemResponse.WebUrl;
+                                attachment.ContentURL = uploadResult.ItemResponse.WebUrl;
                             }
                             if (uploadResult.ItemResponse.ETag != null) {
                                 Regex regex = GuidRegex();
-                                attachment.TeamsGUID = regex.Match(uploadResult.ItemResponse.ETag).Groups[1].ToString();
+                                attachment.Id = regex.Match(uploadResult.ItemResponse.ETag).Groups[1].ToString();
                             }
                             if (uploadResult.ItemResponse.Name != null) {
                                 attachment.Name = uploadResult.ItemResponse.Name;
@@ -509,9 +511,9 @@ namespace SlackToTeams.Utils {
             if (message.Attachments != null) {
                 foreach (var attachment in message.Attachments) {
                     attachments.Add(new ChatMessageAttachment {
-                        Id = attachment.TeamsGUID,
+                        Id = attachment.Id,
                         ContentType = "reference",
-                        ContentUrl = attachment.TeamsURL,
+                        ContentUrl = attachment.ContentURL,
                         Name = attachment.Name
                     });
                 }

@@ -559,21 +559,21 @@ namespace SlackToTeams.Services {
                                                 // Check if the attachment is not an image
                                                 if (
                                                     attachment != null &&
-                                                    !string.IsNullOrWhiteSpace(attachment.MimeType) &&
-                                                    !attachment.MimeType.StartsWith("image/")
+                                                    !string.IsNullOrWhiteSpace(attachment.ContentType) &&
+                                                    !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
+                                                    !attachment.ContentType.StartsWith("image/")
                                                 ) {
                                                     // If so upload to teams drive
                                                     await UploadFileToPath(graphHelper, teamId, channel.DisplayName, attachment);
                                                 }
                                             }
                                         }
-                                        ChatMessage? chatMessage;
                                         if (message.IsInThread && !message.IsParentThread) {
                                             _logger.LogDebug("Processing message as in thread sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
-                                            chatMessage = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);
+                                            _ = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);
                                         } else {
                                             _logger.LogDebug("Processing message sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
-                                            chatMessage = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
+                                            _ = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
                                         }
                                         HtmlHelper.MessageToHtml(htmlFile, message);
                                     }

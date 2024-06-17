@@ -69,26 +69,5 @@ namespace SlackToTeams.Utils {
         }
 
         #endregion
-        #region Method - SlackToTeamsReaction
-
-        public static string? SlackToTeamsReaction(string? slackReaction) {
-            string? result = null;
-
-            if (!string.IsNullOrWhiteSpace(slackReaction)) {
-                // result can be one of : like, angry, sad, laugh, heart, surprised
-                result = slackReaction switch {
-                    "wave" => "angry",
-                    "sunglasses" => "sad",
-                    "rolling_on_the_floor_laughing" => "laugh",
-                    "man-bowing" => "heart",
-                    "money_mouth_face" => "surprised",
-                    _ => "like",
-                };
-            }
-
-            return result;
-        }
-
-        #endregion
     }
 }

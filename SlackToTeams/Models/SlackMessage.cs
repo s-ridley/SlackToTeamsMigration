@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System.Text;
-using System.Web;
 using Microsoft.Graph.Models;
 using SlackToTeams.Utils;
 
@@ -76,17 +75,6 @@ namespace SlackToTeams.Models {
         }
 
         #endregion
-        #region Method - FormattedFrom
-
-        private ChatMessageFromIdentitySet? FormattedFrom() {
-            if (User != null) {
-                return User.ToChatMessageFromIdentitySet();
-            } else {
-                return null;
-            }
-        }
-
-        #endregion
         #region Method - FormattedAttachments
 
         private string FormattedAttachments() {
@@ -95,11 +83,11 @@ namespace SlackToTeams.Models {
                 foreach (var attachment in Attachments) {
                     if (
                         attachment != null &&
-                        !string.IsNullOrWhiteSpace(attachment.TeamsGUID)
+                        !string.IsNullOrWhiteSpace(attachment.Id) &&
+                        !string.IsNullOrWhiteSpace(attachment.ContentURL)
                     ) {
-                        _ = formattedText.Append($"<attachment id='{attachment.TeamsGUID}'></attachment>");
+                        _ = formattedText.Append($"<attachment id='{attachment.Id}'></attachment>");
                     }
-                    //_ = formattedText.Append($"[{attachment.Name}]<br>");
                 }
             }
 
@@ -115,9 +103,9 @@ namespace SlackToTeams.Models {
                 foreach (var attachment in Attachments) {
                     if (
                         attachment != null &&
-                        !string.IsNullOrWhiteSpace(attachment.TeamsGUID)
+                        !string.IsNullOrWhiteSpace(attachment.Id)
                     ) {
-                        _ = formattedText.Append($"<attachment id='{attachment.TeamsGUID}'></attachment>");
+                        _ = formattedText.Append($"<attachment id='{attachment.Id}'></attachment>");
                     }
                 }
             }
@@ -137,7 +125,7 @@ namespace SlackToTeams.Models {
                 foreach (var reaction in Reactions) {
                     Mentions ??= [];
                     Mentions.Add(reaction.User);
-                    _ = formattedText.Append($"[{HttpUtility.HtmlEncode(reaction.ReactionType)}] <at id=\"{Mentions.Count}\">{reaction.User.DisplayName}</at><br>");
+                    _ = formattedText.Append($"{reaction.Emoji} <at id=\"{Mentions.Count}\">{reaction.User.DisplayName}</at><br>");
                 }
             }
 
@@ -155,8 +143,27 @@ namespace SlackToTeams.Models {
             ) {
                 int tempId = 1;
                 foreach (var hostedContent in HostedContents) {
-                    _ = formattedText.Append($"<span><img src=\"../hostedContents/{tempId}/$value\"></span>");
+                    _ = formattedText.Append($"<span><img{(hostedContent.Height > 0 && hostedContent.Width > 0 ? $" height=\"{hostedContent.Height}\" width=\"{hostedContent.Width}\" style=\"vertical-align:bottom; width:{hostedContent.Width}px; height:{hostedContent.Height}px\" " : " ")}src=\"../hostedContents/{tempId}/$value\"></span>");
                     tempId++;
+                }
+            }
+
+            return formattedText.ToString();
+        }
+
+        #endregion
+        #region Method - HtmlAttachments
+
+        public string HtmlAttachments() {
+            StringBuilder formattedText = new();
+            if (Attachments != null) {
+                foreach (var attachment in Attachments) {
+                    if (
+                        attachment != null &&
+                        !string.IsNullOrWhiteSpace(attachment.Content)
+                    ) {
+                        _ = formattedText.Append($"{attachment.Content}{Environment.NewLine}");
+                    }
                 }
             }
 
@@ -175,7 +182,7 @@ namespace SlackToTeams.Models {
                 foreach (var reaction in Reactions) {
                     Mentions ??= [];
                     Mentions.Add(reaction.User);
-                    _ = formattedText.Append($"[{reaction.Emoji}] {reaction.User.DisplayName}{Environment.NewLine}");
+                    _ = formattedText.Append($"{reaction.Emoji} {reaction.User.DisplayName}{Environment.NewLine}");
                 }
             }
 
@@ -193,7 +200,7 @@ namespace SlackToTeams.Models {
             ) {
                 foreach (var hostedContent in HostedContents) {
                     if (hostedContent.ContentBytes != null) {
-                        _ = formattedText.Append($"<img src=\"data:image/png;base64, {Convert.ToBase64String(hostedContent.ContentBytes)}\">");
+                        _ = formattedText.Append($"<img{(hostedContent.Height > 0 && hostedContent.Width > 0 ? $" height=\"{hostedContent.Height}\" width=\"{hostedContent.Width}\" " : " ")}src=\"data:image/png;base64, {Convert.ToBase64String(hostedContent.ContentBytes)}\">");
                     }
                 }
             }
@@ -202,10 +209,21 @@ namespace SlackToTeams.Models {
         }
 
         #endregion
+        #region Method - ToChatMessageFromIdentitySet
+
+        private ChatMessageFromIdentitySet? ToChatMessageFromIdentitySet() {
+            if (User != null) {
+                return User.ToChatMessageFromIdentitySet();
+            } else {
+                return null;
+            }
+        }
+
+        #endregion
         #region Method - ToMentions
 
-        private List<Microsoft.Graph.Models.ChatMessageMention> ToMentions() {
-            List<Microsoft.Graph.Models.ChatMessageMention> formattedMentions = [];
+        private List<ChatMessageMention> ToMentions() {
+            List<ChatMessageMention> formattedMentions = [];
             if (
                 Mentions != null &&
                 Mentions.Count > 0
@@ -220,26 +238,10 @@ namespace SlackToTeams.Models {
         }
 
         #endregion
-        #region Method - ToReactions
-
-        private List<Microsoft.Graph.Models.ChatMessageReaction> ToReactions() {
-            List<Microsoft.Graph.Models.ChatMessageReaction> formattedReactions = [];
-            if (
-                Reactions != null &&
-                Reactions.Count > 0
-            ) {
-                foreach (var reaction in Reactions) {
-                    formattedReactions.Add(reaction.ToChatMessageReaction());
-                }
-            }
-            return formattedReactions;
-        }
-
-        #endregion
         #region Method - ToHostedContents
 
-        private List<Microsoft.Graph.Models.ChatMessageHostedContent> ToHostedContents() {
-            List<Microsoft.Graph.Models.ChatMessageHostedContent> formattedHostedContents = [];
+        private List<ChatMessageHostedContent> ToHostedContents() {
+            List<ChatMessageHostedContent> formattedHostedContents = [];
             if (
                 HostedContents != null &&
                 HostedContents.Count > 0
@@ -265,15 +267,10 @@ namespace SlackToTeams.Models {
                 foreach (var attachment in Attachments) {
                     if (
                         attachment != null &&
-                        !string.IsNullOrWhiteSpace(attachment.TeamsGUID) &&
-                        !string.IsNullOrWhiteSpace(attachment.TeamsURL)
+                        !string.IsNullOrWhiteSpace(attachment.Id) &&
+                        !string.IsNullOrWhiteSpace(attachment.ContentURL)
                     ) {
-                        attachments.Add(new ChatMessageAttachment {
-                            Id = attachment.TeamsGUID,
-                            ContentType = "reference",
-                            ContentUrl = attachment.TeamsURL,
-                            Name = attachment.Name
-                        });
+                        attachments.Add(attachment.ToChatMessageAttachment());
                     }
                 }
             }
@@ -285,18 +282,51 @@ namespace SlackToTeams.Models {
 
         public ChatMessage ToChatMessage() {
             // Message that doesn't have team user equivalent
-            return new ChatMessage {
-                Body = new ItemBody {
-                    Content = FormattedMessage(),
+            ChatMessage chatMessage = new();
+
+            string content = FormattedMessage();
+            if (!string.IsNullOrWhiteSpace(content)) {
+                chatMessage.Body = new ItemBody {
+                    Content = content,
                     ContentType = BodyType.Html,
-                },
-                From = FormattedFrom(),
-                CreatedDateTime = ConvertHelper.SlackTimestampToDateTime(Date),
-                Mentions = ToMentions(),
-                Reactions = ToReactions(),
-                HostedContents = ToHostedContents(),
-                Attachments = ToAttachments()
-            };
+                };
+            }
+
+            ChatMessageFromIdentitySet? from = ToChatMessageFromIdentitySet();
+            if (from != null) {
+                chatMessage.From = from;
+            }
+
+            DateTime createdDateTime = ConvertHelper.SlackTimestampToDateTime(Date);
+            if (createdDateTime != DateTime.MinValue) {
+                chatMessage.CreatedDateTime = createdDateTime;
+            }
+
+            List<ChatMessageMention> mentions = ToMentions();
+            if (
+                mentions != null &&
+                mentions.Count > 0
+            ) {
+                chatMessage.Mentions = mentions;
+            }
+
+            List<ChatMessageHostedContent> hostedContents = ToHostedContents();
+            if (
+                hostedContents != null &&
+                hostedContents.Count > 0
+            ) {
+                chatMessage.HostedContents = hostedContents;
+            }
+
+            List<ChatMessageAttachment> attachments = ToAttachments();
+            if (
+                attachments != null &&
+                attachments.Count > 0
+            ) {
+                chatMessage.Attachments = attachments;
+            }
+
+            return chatMessage;
         }
 
         #endregion

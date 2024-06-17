@@ -63,13 +63,17 @@ namespace SlackToTeams.Models {
         #endregion
         #region Method - ToChatMessageFromIdentitySet
 
-        public ChatMessageFromIdentitySet ToChatMessageFromIdentitySet() {
-            return new ChatMessageFromIdentitySet {
-                User = new Identity {
-                    Id = TeamsUserID ?? null,
-                    DisplayName = DisplayName ?? "Unknown"
-                }
-            };
+        public ChatMessageFromIdentitySet? ToChatMessageFromIdentitySet() {
+            if (!IsBot) {
+                return new ChatMessageFromIdentitySet {
+                    User = new Identity {
+                        Id = TeamsUserID ?? null,
+                        DisplayName = DisplayName ?? "Unknown"
+                    }
+                };
+            } else {
+                return null;
+            }
         }
 
         #endregion

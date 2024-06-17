@@ -1,6 +1,4 @@
-﻿using Microsoft.Graph.Models;
-using SlackToTeams.Models;
-using static System.Net.Mime.MediaTypeNames;
+﻿using SlackToTeams.Models;
 
 namespace SlackToTeams.Utils {
     public class HtmlHelper {
@@ -35,10 +33,6 @@ namespace SlackToTeams.Utils {
                         message.Attachments.Count > 0
                     ) ||
                     (
-                        message.Mentions != null &&
-                        message.Mentions.Count > 0
-                    ) ||
-                    (
                         message.Reactions != null &&
                         message.Reactions.Count > 0
                     ) ||
@@ -53,6 +47,12 @@ namespace SlackToTeams.Utils {
                     htmlBody += message.Text.Trim();
                 }
                 if (
+                    message.Attachments != null &&
+                    message.Attachments.Count > 0
+                ) {
+                    htmlBody += message.HtmlAttachments();
+                }
+                if (
                     message.HostedContents != null &&
                     message.HostedContents.Count > 0
                 ) {
@@ -65,7 +65,7 @@ namespace SlackToTeams.Utils {
                     htmlBody += message.HtmlReactions();
                 }
 
-                htmlBody += htmlBody.Replace(Environment.NewLine, "<br>");
+                htmlBody = htmlBody.Replace(Environment.NewLine, "<br>");
 
                 File.AppendAllText(htmlFilePath, $"<div>{Environment.NewLine}");
                 File.AppendAllText(htmlFilePath, $"<span id=\"user_id\" style=\"font-weight:bold;\">{message.User?.DisplayName}</span>");

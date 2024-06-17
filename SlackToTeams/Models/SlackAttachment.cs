@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-using Azure;
+using Microsoft.Graph.Models;
 using Serilog;
 
 namespace SlackToTeams.Models {
@@ -13,33 +13,44 @@ namespace SlackToTeams.Models {
         #endregion
         #region Properties
 
+        public string? Id { get; set; }
         public string? Channel { get; set; }
         public string? SlackURL { get; set; }
         public string? Name { get; set; }
         public string? DisplayName { get; set; }
         public string? Title { get; set; }
         public string? FileType { get; set; }
-        public string? MimeType { get; set; }
         public long? Size { get; set; }
+        public int? Width { get; set; }
+        public int? Height { get; set; }
         public DateTimeOffset? Date { get; set; }
-        public string? TeamsURL { get; set; }
-        public string? TeamsGUID { get; set; }
+        public string? Content { get; private set; }
         public byte[]? ContentBytes { get; private set; }
+        public string? ContentType { get; set; }
+        public string? ContentURL { get; set; }
+        public string? ThumbnailUrl { get; set; }
 
         #endregion
         #region Constructors
 
-        public SlackAttachment(string channel, string? slackUrl, string? name, string? title, string? fileType, string? mimeType, long? size, DateTimeOffset? date) {
+        public SlackAttachment(string id, string contentType, string content, string? thumbnailUrl) {
+            Id = id;
+            ContentType = contentType;
+            Content = content;
+            ThumbnailUrl = thumbnailUrl;
+        }
+
+        public SlackAttachment(string channel, string? slackUrl, string? name, string? title, string? fileType, string? contentType, long? size, DateTimeOffset? date) {
             Channel = channel;
             SlackURL = slackUrl;
             Name = name;
             Title = title;
             FileType = fileType;
-            MimeType = mimeType;
+            ContentType = contentType;
             Size = size;
             Date = date;
-            TeamsURL = string.Empty;
-            TeamsGUID = string.Empty;
+            ContentURL = string.Empty;
+            Id = string.Empty;
 
             FormatDisplayName();
         }
@@ -147,6 +158,21 @@ namespace SlackToTeams.Models {
                     client?.Dispose();
                 }
             }
+        }
+
+        #endregion
+        #region Method - ToChatMessageAttachment
+
+        public ChatMessageAttachment ToChatMessageAttachment() {
+            ChatMessageAttachment result = new() {
+                Id = Id,
+                Content = Content,
+                ContentType = ContentType,
+                ContentUrl = ContentURL,
+                Name = Name,
+                ThumbnailUrl = ThumbnailUrl
+            };
+            return result;
         }
 
         #endregion
