@@ -46,7 +46,7 @@ namespace SlackToTeams.Models {
             ContentURL = string.Empty;
             Id = string.Empty;
 
-            FormatDisplayName();
+            Name = FormatDisplayName();
         }
 
         #endregion
@@ -60,11 +60,14 @@ namespace SlackToTeams.Models {
 
                 if (Date != null) {
                     DateTime dateTime = Date.Value.LocalDateTime;
-                    timeString = $"{dateTime.Hour:D2}.{dateTime.Minute:D2}.{dateTime.Second:D2}";
+                    timeString = $"{dateTime:s}";
+
                 }
 
                 if (!string.IsNullOrEmpty(timeString)) {
-                    result = $"{timeString} {Name}";
+                    timeString = timeString.Replace(":", "_");
+                    timeString = timeString.Replace("-", "_");
+                    result = $"{timeString}_{Name}";
                 } else {
                     result = Name;
                 }
