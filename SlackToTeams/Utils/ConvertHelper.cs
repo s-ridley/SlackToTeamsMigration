@@ -1,5 +1,12 @@
-﻿namespace SlackToTeams.Utils {
+﻿using Serilog;
+
+namespace SlackToTeams.Utils {
     public class ConvertHelper {
+        #region Fields
+
+        private static readonly ILogger s_logger = Log.ForContext(typeof(ConvertHelper));
+
+        #endregion
         #region Method - SlackTimestampToDateTime
 
         public static DateTime SlackTimestampToDateTime(string? timestamp) {
@@ -49,18 +56,45 @@
             if (!string.IsNullOrWhiteSpace(slackReaction)) {
                 result = slackReaction switch {
                     "+1" => Emoji.ThumbsUp,
+                    "bed" => Emoji.Bed,
+                    "burrito" => Emoji.Burrito,
+                    "clap" => Emoji.ClappingHands,
+                    "coffee" => Emoji.HotBeverage,
+                    "cop" => Emoji.PoliceOfficer,
+                    "confused" => Emoji.ConfusedFace,
+                    "dark_sunglasses" or "sunglasses" => Emoji.Sunglasses,
                     "grimacing" => Emoji.GrimacingFace,
+                    "grinning" => Emoji.GrinningFace,
+                    "japanese_goblin" => Emoji.Goblin,
+                    "joy" => Emoji.FaceWithTearsOfJoy,
                     "man-bowing" => Emoji.Bowling,
+                    "mantelpiece_clock" => Emoji.MantelpieceClock,
                     "money_mouth_face" => Emoji.MoneyMouthFace,
                     "ok_hand" => Emoji.OKHand,
+                    "parrot" or "party_parrot" => Emoji.Parrot,
+                    "relieved" => Emoji.RelievedFace,
                     "rocket" => Emoji.Rocket,
                     "rolling_on_the_floor_laughing" => Emoji.RollingOnTheFloorLaughing,
+                    "smile" or "simple_smile" => Emoji.SmilingFace,
+                    "slightly_smiling_face" => Emoji.SlightlySmilingFace,
                     "smirk" or "vee" => Emoji.SmirkingFace,
-                    "sunglasses" => Emoji.Sunglasses,
+                    "smith" => Emoji.Hammer,
+                    "stuck_out_tongue_winking_eye" => Emoji.WinkingFaceWithTongue,
+                    "sun" => Emoji.Sun,
+                    "star" => Emoji.Star,
                     "tada" => Emoji.MagicWand,
+                    "tophat" => Emoji.TopHat,
+                    "toot" => Emoji.PartyingFace,
+                    "turtle" => Emoji.Turtle,
+                    "unamused" => Emoji.UnamusedFace,
+                    "upside_down_face" => Emoji.UpsideDownFace,
                     "wave" => Emoji.WavingHand,
+                    "zzz" => Emoji.Zzz,
                     _ => slackReaction,
                 };
+                if (result.Equals(slackReaction)) {
+                    s_logger.Warning("No Emoji found for slackReaction[{slackReaction}]", slackReaction);
+                }
             }
 
             return result;
