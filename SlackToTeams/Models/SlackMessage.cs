@@ -83,8 +83,10 @@ namespace SlackToTeams.Models {
                 foreach (var attachment in Attachments) {
                     if (
                         attachment != null &&
-                        !string.IsNullOrWhiteSpace(attachment.Id) &&
-                        !string.IsNullOrWhiteSpace(attachment.ContentURL)
+                        !string.IsNullOrWhiteSpace(attachment.Name) &&
+                        !string.IsNullOrWhiteSpace(attachment.MimeType) &&
+                        !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
+                        !attachment.MimeType.StartsWith("image/")
                     ) {
                         _ = formattedText.Append($"[{attachment.Name}]<br>");
                     }

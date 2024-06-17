@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Threading.Channels;
 using Microsoft.Graph.Models;
 using Serilog;
 
@@ -110,46 +111,57 @@ namespace SlackToTeams.Models {
         #region Method - DownloadFile
 
         public async Task DownloadFile(string baseDownloadPath, bool overwriteFile) {
-            string fullFilePath = $"{baseDownloadPath}/files/{Channel}/{Name}";
+            // Create the download folder
+            string channelDownloadFolder = $"{baseDownloadPath}/files/{Channel}";
+            Directory.CreateDirectory(channelDownloadFolder);
 
-            if (
-                !string.IsNullOrWhiteSpace(SlackURL) &&
-                (
+            // Confirm the path exists
+            if (Path.Exists(channelDownloadFolder)) {
+                string fullFilePath = $"{channelDownloadFolder}/{Name}";
+                if (
+                    !string.IsNullOrWhiteSpace(SlackURL) &&
                     (
-                        File.Exists(fullFilePath) &&
-                        overwriteFile
-                    ) ||
-                    !File.Exists(fullFilePath)
-                )
-            ) {
-                HttpClient? client = null;
-                try {
-                    client = new();
-                    Logger.Debug("DownloadFile - Downloading SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, fullFilePath);
-                    Console.WriteLine("Downloading SlackURL \"{0}\" to \"{1}\" .......\n\n", SlackURL, fullFilePath);
-                    var response = await client.GetAsync($"{SlackURL}");
-                    // Make sure the response is a success 
-                    _ = response.EnsureSuccessStatusCode();
-                    // Read the response content into a Stream
-                    await using var slackStream = await response.Content.ReadAsStreamAsync();
-                    // Return the stream to the start
-                    _ = slackStream.Seek(0, SeekOrigin.Begin);
-                    // Create the FileStream
-                    using var fileStream = new FileStream(fullFilePath, FileMode.Create);
-                    // Copy slackFileStream to fileStream
-                    await slackStream.CopyToAsync(fileStream);
-                    Logger.Debug("DownloadFile - Successfully Downloaded SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, fullFilePath);
-                    Console.WriteLine("Successfully Downloaded SlackURL \"{0}\" to \"{1}\"", SlackURL, fullFilePath);
-                } catch (System.Net.WebException ex) {
-                    Logger.Error(ex, "DownloadFile - Error downloading SlackURL [{SlackURL}] to [{fullFilePath}] error:{errorMessage}", SlackURL, fullFilePath, ex.Message);
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Error unable to download :{SlackURL}");
-                    Console.WriteLine(ex);
-                    Console.ResetColor();
-                    throw;
-                } finally {
-                    client?.Dispose();
+                        (
+                            File.Exists(fullFilePath) &&
+                            overwriteFile
+                        ) ||
+                        !File.Exists(fullFilePath)
+                    )
+                ) {
+                    HttpClient? client = null;
+                    try {
+                        client = new();
+                        Logger.Debug("DownloadFile - Downloading SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, fullFilePath);
+                        Console.WriteLine("Downloading SlackURL \"{0}\" to \"{1}\" .......\n\n", SlackURL, fullFilePath);
+                        var response = await client.GetAsync($"{SlackURL}");
+                        // Make sure the response is a success 
+                        _ = response.EnsureSuccessStatusCode();
+                        // Read the response content into a Stream
+                        await using var slackStream = await response.Content.ReadAsStreamAsync();
+                        // Return the stream to the start
+                        _ = slackStream.Seek(0, SeekOrigin.Begin);
+                        // Create the FileStream
+                        using var fileStream = new FileStream(fullFilePath, FileMode.Create);
+                        // Copy slackFileStream to fileStream
+                        await slackStream.CopyToAsync(fileStream);
+                        Logger.Debug("DownloadFile - Successfully Downloaded SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, fullFilePath);
+                        Console.WriteLine("Successfully Downloaded SlackURL \"{0}\" to \"{1}\"", SlackURL, fullFilePath);
+                    } catch (System.Net.WebException ex) {
+                        Logger.Error(ex, "DownloadFile - Error downloading SlackURL [{SlackURL}] to [{fullFilePath}] error:{errorMessage}", SlackURL, fullFilePath, ex.Message);
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine($"Error unable to download :{SlackURL}");
+                        Console.WriteLine(ex);
+                        Console.ResetColor();
+                        throw;
+                    } finally {
+                        client?.Dispose();
+                    }
                 }
+            } else {
+                Logger.Error("Download folder does not exist - folder:{channelDownloadFolder}", channelDownloadFolder);
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Download folder does not exist :{channelDownloadFolder}");
+                Console.ResetColor();
             }
         }
 

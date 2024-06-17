@@ -47,7 +47,6 @@ namespace SlackToTeams.Services {
             AuthenticationConfig? config = _config.Get<AuthenticationConfig>();
 
             if (config != null) {
-                bool migrationFinished = false;
                 string? input;
                 string? teamId = null;
 
@@ -150,7 +149,6 @@ namespace SlackToTeams.Services {
                             ) {
                                 if (!string.IsNullOrEmpty(teamId)) {
                                     await FinishMigrating(graphHelper, teamId);
-                                    migrationFinished = true;
                                 }
                             }
                         }
@@ -199,7 +197,6 @@ namespace SlackToTeams.Services {
                                         teamId = await GetTeamByName(graphHelper, teamName);
                                         if (!string.IsNullOrEmpty(teamId)) {
                                             await FinishMigrating(graphHelper, teamId);
-                                            migrationFinished = true;
                                         }
                                     }
                                 }
@@ -211,59 +208,56 @@ namespace SlackToTeams.Services {
                                     !string.IsNullOrWhiteSpace(team.DisplayName)
                                 ) {
                                     await FinishMigratingByName(graphHelper, team.DisplayName);
-                                    migrationFinished = true;
                                 }
                             }
                         }
                     }
 
-                    if (migrationFinished) {
-                        /*
-                        ** MIGRATE ATTACHMENTS TO EXISTING TEAM
-                        */
-                        Console.WriteLine();
-                        Console.ForegroundColor = ConsoleColor.DarkYellow;
-                        Console.Write("Do you want to migrate attachments to a team? [y/N] ");
-                        Console.ResetColor();
-                        input = Console.ReadLine();
+                    /*
+                    ** MIGRATE ATTACHMENTS TO EXISTING TEAM
+                    */
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                    Console.Write("Do you want to migrate attachments to a team? [y/N] ");
+                    Console.ResetColor();
+                    input = Console.ReadLine();
 
+                    if (
+                        !string.IsNullOrEmpty(input) &&
+                        (
+                            input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
+                            input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
+                            input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
+                        )
+                    ) {
+                        string? uploadTeamId = null;
+                        var teams = await ListJoinedTeamsAsync(graphHelper);
                         if (
-                            !string.IsNullOrEmpty(input) &&
-                            (
-                                input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
-                                input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
-                                input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
-                            )
+                            teams != null &&
+                            teams.Value != null
                         ) {
-                            string? uploadTeamId = null;
-                            var teams = await ListJoinedTeamsAsync(graphHelper);
-                            if (
-                                teams != null &&
-                                teams.Value != null
-                            ) {
-                                int index = 0;
-                                Console.ForegroundColor = ConsoleColor.White;
-                                foreach (var team in teams.Value) {
-                                    Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
-                                    index++;
+                            int index = 0;
+                            Console.ForegroundColor = ConsoleColor.White;
+                            foreach (var team in teams.Value) {
+                                Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
+                                index++;
+                            }
+                            Console.ResetColor();
+
+                            int choice;
+                            do {
+                                choice = UserInputIndexOfList();
+                                if (choice < 0 || choice >= teams.Value.Count) {
+                                    Console.ForegroundColor = ConsoleColor.Red;
+                                    Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Value.Count}");
+                                    Console.ResetColor();
                                 }
-                                Console.ResetColor();
+                            } while (choice < 0 || choice >= teams.Value.Count);
 
-                                int choice;
-                                do {
-                                    choice = UserInputIndexOfList();
-                                    if (choice < 0 || choice >= teams.Value.Count) {
-                                        Console.ForegroundColor = ConsoleColor.Red;
-                                        Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Value.Count}");
-                                        Console.ResetColor();
-                                    }
-                                } while (choice < 0 || choice >= teams.Value.Count);
-
-                                uploadTeamId = teams.Value[choice].Id;
-                            }
-                            if (!string.IsNullOrEmpty(uploadTeamId)) {
-                                await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, channelList, userList, uploadTeamId);
-                            }
+                            uploadTeamId = teams.Value[choice].Id;
+                        }
+                        if (!string.IsNullOrEmpty(uploadTeamId)) {
+                            await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, channelList, userList, uploadTeamId);
                         }
                     }
                 } else {
