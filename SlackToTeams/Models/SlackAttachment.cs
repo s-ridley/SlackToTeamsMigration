@@ -26,27 +26,20 @@ namespace SlackToTeams.Models {
         public DateTimeOffset? Date { get; set; }
         public string? Content { get; private set; }
         public byte[]? ContentBytes { get; private set; }
-        public string? ContentType { get; set; }
+        public string? MimeType { get; set; }
         public string? ContentURL { get; set; }
         public string? ThumbnailUrl { get; set; }
 
         #endregion
         #region Constructors
 
-        public SlackAttachment(string id, string contentType, string content, string? thumbnailUrl) {
-            Id = id;
-            ContentType = contentType;
-            Content = content;
-            ThumbnailUrl = thumbnailUrl;
-        }
-
-        public SlackAttachment(string channel, string? slackUrl, string? name, string? title, string? fileType, string? contentType, long? size, DateTimeOffset? date) {
+        public SlackAttachment(string channel, string? slackUrl, string? name, string? title, string? fileType, string? mimeType, long? size, DateTimeOffset? date) {
             Channel = channel;
             SlackURL = slackUrl;
             Name = name;
             Title = title;
             FileType = fileType;
-            ContentType = contentType;
+            MimeType = mimeType;
             Size = size;
             Date = date;
             ContentURL = string.Empty;
@@ -167,7 +160,7 @@ namespace SlackToTeams.Models {
             ChatMessageAttachment result = new() {
                 Id = Id,
                 Content = Content,
-                ContentType = ContentType,
+                ContentType = "reference",
                 ContentUrl = ContentURL,
                 Name = Name,
                 ThumbnailUrl = ThumbnailUrl

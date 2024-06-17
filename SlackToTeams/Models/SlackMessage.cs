@@ -86,7 +86,7 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.Id) &&
                         !string.IsNullOrWhiteSpace(attachment.ContentURL)
                     ) {
-                        _ = formattedText.Append($"<attachment id='{attachment.Id}'></attachment>");
+                        _ = formattedText.Append($"[{attachment.Name}]<br>");
                     }
                 }
             }

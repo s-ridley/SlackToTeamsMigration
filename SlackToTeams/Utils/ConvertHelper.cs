@@ -1,7 +1,4 @@
-﻿using System.Numerics;
-using System.Text;
-
-namespace SlackToTeams.Utils {
+﻿namespace SlackToTeams.Utils {
     public class ConvertHelper {
         #region Method - SlackTimestampToDateTime
 
@@ -60,6 +57,7 @@ namespace SlackToTeams.Utils {
                     "rolling_on_the_floor_laughing" => Emoji.RollingOnTheFloorLaughing,
                     "smirk" or "vee" => Emoji.SmirkingFace,
                     "sunglasses" => Emoji.Sunglasses,
+                    "tada" => Emoji.MagicWand,
                     "wave" => Emoji.WavingHand,
                     _ => slackReaction,
                 };

@@ -235,36 +235,34 @@ namespace SlackToTeams.Services {
                                 input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
                             )
                         ) {
-                            // If we did not just migrate, we can ask the user to provide the team
-                            if (string.IsNullOrEmpty(teamId)) {
-                                var teams = await ListJoinedTeamsAsync(graphHelper);
-                                if (
-                                    teams != null &&
-                                    teams.Value != null
-                                ) {
-                                    int index = 0;
-                                    Console.ForegroundColor = ConsoleColor.White;
-                                    foreach (var team in teams.Value) {
-                                        Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
-                                        index++;
-                                    }
-                                    Console.ResetColor();
-
-                                    int choice;
-                                    do {
-                                        choice = UserInputIndexOfList();
-                                        if (choice < 0 || choice >= teams.Value.Count) {
-                                            Console.ForegroundColor = ConsoleColor.Red;
-                                            Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Value.Count}");
-                                            Console.ResetColor();
-                                        }
-                                    } while (choice < 0 || choice >= teams.Value.Count);
-
-                                    teamId = teams.Value[choice].Id;
+                            string? uploadTeamId = null;
+                            var teams = await ListJoinedTeamsAsync(graphHelper);
+                            if (
+                                teams != null &&
+                                teams.Value != null
+                            ) {
+                                int index = 0;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                foreach (var team in teams.Value) {
+                                    Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
+                                    index++;
                                 }
+                                Console.ResetColor();
+
+                                int choice;
+                                do {
+                                    choice = UserInputIndexOfList();
+                                    if (choice < 0 || choice >= teams.Value.Count) {
+                                        Console.ForegroundColor = ConsoleColor.Red;
+                                        Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Value.Count}");
+                                        Console.ResetColor();
+                                    }
+                                } while (choice < 0 || choice >= teams.Value.Count);
+
+                                uploadTeamId = teams.Value[choice].Id;
                             }
-                            if (!string.IsNullOrEmpty(teamId)) {
-                                await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, channelList, userList, teamId);
+                            if (!string.IsNullOrEmpty(uploadTeamId)) {
+                                await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, channelList, userList, uploadTeamId);
                             }
                         }
                     }
@@ -383,7 +381,15 @@ namespace SlackToTeams.Services {
                                     message.Attachments.Count > 0
                                 ) {
                                     foreach (var attachment in message.Attachments) {
-                                        await UploadFileToPath(graphHelper, teamID, channel.DisplayName, attachment);
+                                        // Check if the attachment is not an image
+                                        if (
+                                            attachment != null &&
+                                            !string.IsNullOrWhiteSpace(attachment.MimeType) &&
+                                            !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
+                                            !attachment.MimeType.StartsWith("image/")
+                                        ) {
+                                            await UploadFileToPath(graphHelper, teamID, channel.DisplayName, attachment);
+                                        }
                                     }
 
                                     await AddAttachmentsToMessage(graphHelper, teamID, channelID, message);
@@ -559,15 +565,19 @@ namespace SlackToTeams.Services {
                                                 // Check if the attachment is not an image
                                                 if (
                                                     attachment != null &&
-                                                    !string.IsNullOrWhiteSpace(attachment.ContentType) &&
+                                                    !string.IsNullOrWhiteSpace(attachment.MimeType) &&
                                                     !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                                                    !attachment.ContentType.StartsWith("image/")
+                                                    !attachment.MimeType.StartsWith("image/")
                                                 ) {
                                                     // If so upload to teams drive
-                                                    await UploadFileToPath(graphHelper, teamId, channel.DisplayName, attachment);
+                                                    await attachment.DownloadFile(
+                                                        slackArchiveBasePath,   // baseDownloadPath
+                                                        true                    //overwriteFile
+                                                    );
                                                 }
                                             }
                                         }
+
                                         if (message.IsInThread && !message.IsParentThread) {
                                             _logger.LogDebug("Processing message as in thread sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
                                             _ = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);

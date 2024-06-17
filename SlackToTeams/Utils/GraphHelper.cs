@@ -422,19 +422,17 @@ namespace SlackToTeams.Utils {
             string driveID = string.Empty;
             if (
                 drives != null &&
-                !string.IsNullOrWhiteSpace(drives.Id)
-                //Items != null
+                drives.Items != null
             ) {
-                //foreach (var drive in drives.Items) {
-                //    if (
-                //        drive.Root != null &&
-                //        drive.Id != null
-                //    ) {
-                //        driveID = drive.Id;
-                //        break;
-                //    }
-                //}
-                driveID = drives.Id;
+                foreach (var drive in drives.Items) {
+                    if (
+                        drive.Root != null &&
+                        drive.Id != null
+                    ) {
+                        driveID = drive.Id;
+                        break;
+                    }
+                }
             }
 
             if (!string.IsNullOrWhiteSpace(driveID)) {

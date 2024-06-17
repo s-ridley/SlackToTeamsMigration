@@ -23,22 +23,22 @@ namespace SlackToTeams.Models {
         #region Constructors
 
         [JsonConstructor]
-        public SlackUser(string slackUserID, string? teamsUserID, string displayName, string? email, bool isBot) {
+        public SlackUser(string slackUserID, string? teamsUserID, string? displayName, string? email, bool isBot) {
             SlackUserID = slackUserID;
             TeamsUserID = teamsUserID ?? string.Empty;
 
-            DisplayName = displayName;
+            DisplayName = displayName ?? "Unknown";
             Email = email;
             IsBot = isBot;
         }
 
-        public SlackUser(string slackUserID, string displayName, string? email, bool isBot) : this(slackUserID, string.Empty, displayName, email, isBot) {
+        public SlackUser(string slackUserID, string? displayName, string? email, bool isBot) : this(slackUserID, string.Empty, displayName, email, isBot) {
         }
 
         #endregion
         #region Method - BotUser
 
-        public static SlackUser BotUser(string slackUserID, string displayName) {
+        public static SlackUser BotUser(string slackUserID, string? displayName) {
             return new SlackUser(slackUserID, displayName, string.Empty, true);
         }
 
@@ -64,16 +64,12 @@ namespace SlackToTeams.Models {
         #region Method - ToChatMessageFromIdentitySet
 
         public ChatMessageFromIdentitySet? ToChatMessageFromIdentitySet() {
-            if (!IsBot) {
-                return new ChatMessageFromIdentitySet {
-                    User = new Identity {
-                        Id = TeamsUserID ?? null,
-                        DisplayName = DisplayName ?? "Unknown"
-                    }
-                };
-            } else {
-                return null;
-            }
+            return new ChatMessageFromIdentitySet {
+                User = new Identity {
+                    Id = TeamsUserID ?? null,
+                    DisplayName = DisplayName ?? "Unknown"
+                }
+            };
         }
 
         #endregion

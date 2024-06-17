@@ -74,8 +74,8 @@ namespace SlackToTeams.Utils {
                                     // Check if the attachment is an image
                                     if (
                                         attachment != null &&
-                                        !string.IsNullOrWhiteSpace(attachment.ContentType) &&
-                                        attachment.ContentType.StartsWith("image/")
+                                        !string.IsNullOrWhiteSpace(attachment.MimeType) &&
+                                        attachment.MimeType.StartsWith("image/")
                                     ) {
                                         // Download the file and convert to base64
                                         attachment.DownloadBytes().Wait();
@@ -88,7 +88,7 @@ namespace SlackToTeams.Utils {
                                             hostedContents.Add(
                                                 new SlackHostedContent(
                                                     attachment.ContentBytes,
-                                                    attachment.ContentType,    // contentType
+                                                    attachment.MimeType,
                                                     attachment.Height,
                                                     attachment.Width
                                                 )
@@ -138,16 +138,16 @@ namespace SlackToTeams.Utils {
                         string? title = obj.SelectToken("attachments[0].title")?.ToString();
                         string? titleLink = obj.SelectToken("attachments[0].title_link")?.ToString();
                         string? preText = obj.SelectToken("attachments[0].pretext")?.ToString();
-                        string? thumbnailUrl = obj.SelectToken("attachments[0].thumb_url")?.ToString();
                         var fields = obj.SelectTokens("attachments[0].fields[*]").ToList();
+                        string? footer = obj.SelectToken("attachments[0].footer")?.ToString();
 
                         StringBuilder formattedText = new();
 
                         if (!string.IsNullOrEmpty(title)) {
                             if (string.IsNullOrEmpty(titleLink)) {
-                                formattedText.AppendLine($"<strong>{title}<\\strong>");
+                                formattedText.AppendLine($"<strong>{title}</strong>");
                             } else {
-                                formattedText.AppendLine($"<strong><a href='{titleLink}'>{HttpUtility.HtmlEncode(title)}</a><\\strong>");
+                                formattedText.AppendLine($"<strong><a href='{titleLink}'>{HttpUtility.HtmlEncode(title)}</a></strong>");
                             }
                         }
 
@@ -167,9 +167,40 @@ namespace SlackToTeams.Utils {
                                     !string.IsNullOrEmpty(fieldTitle) &&
                                     !string.IsNullOrEmpty(fieldValue)
                                 ) {
-                                    formattedText.AppendLine($"{fieldTitle} - {fieldValue}");
+                                    // Search for usernames
+                                    string[] fieldValueNames = fieldValue.Split("<@");
+                                    if (
+                                        fieldValueNames != null &&
+                                        fieldValueNames.Length > 0
+                                    ) {
+                                        foreach (var fieldToken in fieldValueNames) {
+                                            if (
+                                                !string.IsNullOrEmpty(fieldToken) &&
+                                                fieldToken.Contains('>')
+                                            ) {
+                                                string fieldTokenSlackId = fieldToken.Substring(0, fieldToken.IndexOf('>')).Trim();
+
+                                                SlackUser fieldTokenUser = FindUser(userList, fieldTokenSlackId);
+
+                                                if (
+                                                    fieldTokenUser != null &&
+                                                    !fieldTokenUser.IsBot &&
+                                                    !string.IsNullOrEmpty(fieldTokenUser.DisplayName)
+                                                ) {
+                                                    fieldValue = fieldValue.Replace($"<@{fieldTokenSlackId}>", $"[{fieldTokenUser.DisplayName}]");
+                                                }
+                                            }
+                                        }
+                                        formattedText.AppendLine($"<strong>{fieldTitle}:</strong> {fieldValue}");
+                                    } else {
+                                        formattedText.AppendLine($"<strong>{fieldTitle}:</strong> {fieldValue}");
+                                    }
                                 }
                             }
+                        }
+
+                        if (!string.IsNullOrEmpty(footer)) {
+                            formattedText.AppendLine($"{footer}");
                         }
 
                         messageText = formattedText.ToString();
@@ -399,10 +430,7 @@ namespace SlackToTeams.Utils {
             ) {
                 string? username = obj.SelectToken("username")?.ToString();
                 string? botId = obj.SelectToken("bot_id")?.ToString();
-                if (
-                    !string.IsNullOrEmpty(username) &&
-                    !string.IsNullOrEmpty(botId)
-                ) {
+                if (!string.IsNullOrEmpty(botId)) {
                     return SlackUser.BotUser(botId, username);
                 }
             } else {
