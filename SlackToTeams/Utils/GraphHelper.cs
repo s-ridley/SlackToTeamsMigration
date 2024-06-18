@@ -570,9 +570,7 @@ namespace SlackToTeams.Utils {
                 !string.IsNullOrWhiteSpace(attachment.MimeType)
             ) {
                 return attachment.MimeType switch {
-                    "image/gif" => true,
-                    "image/jpeg" => true,
-                    "image/png" => true,
+                    "image/gif" or "image/jpeg" or "image/png" => true,
                     _ => false,
                 };
             } else {

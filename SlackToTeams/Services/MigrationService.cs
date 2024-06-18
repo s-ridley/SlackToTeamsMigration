@@ -1046,13 +1046,13 @@ namespace SlackToTeams.Services {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 return null;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] error:{errorMessage}", teamId, channelId, ex.Message);
+                _logger.LogError(ex, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
                 return null;
             }
         }
@@ -1068,13 +1068,13 @@ namespace SlackToTeams.Services {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 return null;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] error:{errorMessage}", teamId, channelId, ex.Message);
+                _logger.LogError(ex, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
                 return null;
             }
         }
