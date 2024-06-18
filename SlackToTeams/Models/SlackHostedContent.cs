@@ -14,7 +14,7 @@ namespace SlackToTeams.Models {
         #region Constructors
 
         [JsonConstructor]
-        public SlackHostedContent(byte[] contentBytes, string contentType, int? height, int? width) {
+        public SlackHostedContent(byte[] contentBytes, string? contentType, int? height, int? width) {
             ContentBytes = contentBytes;
             ContentType = contentType;
             Height = height;

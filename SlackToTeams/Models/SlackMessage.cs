@@ -84,9 +84,8 @@ namespace SlackToTeams.Models {
                     if (
                         attachment != null &&
                         !string.IsNullOrWhiteSpace(attachment.Name) &&
-                        !string.IsNullOrWhiteSpace(attachment.MimeType) &&
                         !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                        !GraphHelper.ValidHostedContent(attachment.MimeType)
+                        !GraphHelper.ValidHostedContent(attachment)
                     ) {
                         _ = formattedText.Append($"[{attachment.Name}]<br>");
                     }
@@ -169,9 +168,8 @@ namespace SlackToTeams.Models {
                     if (
                         attachment != null &&
                         !string.IsNullOrWhiteSpace(attachment.Name) &&
-                        !string.IsNullOrWhiteSpace(attachment.MimeType) &&
                         !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                        !GraphHelper.ValidHostedContent(attachment.MimeType)
+                        !GraphHelper.ValidHostedContent(attachment)
                     ) {
                         formattedText ??= new();
                         _ = formattedText.Append($"{attachment.Name}{Environment.NewLine}");

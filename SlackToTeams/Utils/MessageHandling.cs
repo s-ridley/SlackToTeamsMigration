@@ -80,11 +80,7 @@ namespace SlackToTeams.Utils {
                             foreach (var attachment in attachments) {
                                 try {
                                     // Check if the attachment is an image
-                                    if (
-                                        attachment != null &&
-                                        !string.IsNullOrWhiteSpace(attachment.MimeType) &&
-                                        GraphHelper.ValidHostedContent(attachment.MimeType)
-                                    ) {
+                                    if (GraphHelper.ValidHostedContent(attachment)) {
                                         // Download the file and convert to base64
                                         attachment.DownloadBytes().Wait();
                                         if (

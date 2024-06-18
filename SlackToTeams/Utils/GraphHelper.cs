@@ -33,6 +33,11 @@ namespace SlackToTeams.Utils {
         private static partial Regex GuidRegex();
 
         #endregion
+        #region Constants
+
+        public const long CONTENT_MAX_SIZE = 4100000;
+
+        #endregion
         #region Poperties
 
         /*
@@ -90,7 +95,7 @@ namespace SlackToTeams.Utils {
                 result = await App.AcquireTokenForClient(Scopes)
                     .ExecuteAsync();
             } catch (MsalServiceException ex) when (ex.Message.Contains("AADSTS70011")) {
-                s_logger.Error(ex, "Scope provided is not supported error:{errorMessage}", ex.Message);
+                s_logger.Error(ex, "Scope provided is not supported - apiCall:{apiCall} error:{errorMessage}", apiCall, ex.Message);
                 // Invalid scope. The scope has to be of the form "https://resourceurl/.default"
                 // Mitigation: change the scope to be as expected
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -100,9 +105,16 @@ namespace SlackToTeams.Utils {
 
             // The following example uses a Raw Http call 
             if (result != null) {
-                var httpClient = new HttpClient();
-                var apiCaller = new ProtectedApiCallHelper(httpClient);
-                return await apiCaller.GetWebApiCall($"{Config.ApiUrl}v1.0/{apiCall}", result.AccessToken);
+                try {
+                    var httpClient = new HttpClient();
+                    var apiCaller = new ProtectedApiCallHelper(httpClient);
+                    return await apiCaller.GetWebApiCall($"{Config.ApiUrl}v1.0/{apiCall}", result.AccessToken);
+                } catch (Exception ex) {
+                    s_logger.Error(ex, "Error whilte calling - apiCall:{apiCall} error:{errorMessage}", apiCall, ex.Message);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error whilte calling - apiCall:{apiCall}");
+                    Console.ResetColor();
+                }
             }
 
             return null;
@@ -117,7 +129,7 @@ namespace SlackToTeams.Utils {
                 result = await App.AcquireTokenForClient(Scopes)
                     .ExecuteAsync();
             } catch (MsalServiceException ex) when (ex.Message.Contains("AADSTS70011")) {
-                s_logger.Error(ex, "Scope provided is not supported error:{errorMessage}", ex.Message);
+                s_logger.Error(ex, "Scope provided is not supported - apiCall:{apiCall} error:{errorMessage}", apiCall, ex.Message);
                 // Invalid scope. The scope has to be of the form "https://resourceurl/.default"
                 // Mitigation: change the scope to be as expected
                 Console.ForegroundColor = ConsoleColor.Red;
@@ -127,9 +139,16 @@ namespace SlackToTeams.Utils {
 
             // The following example uses a Raw Http call 
             if (result != null) {
-                var httpClient = new HttpClient();
-                var apiCaller = new ProtectedApiCallHelper(httpClient);
-                return await apiCaller.PostWebApiCall($"{Config.ApiUrl}v1.0/{apiCall}", result.AccessToken, content);
+                try {
+                    var httpClient = new HttpClient();
+                    var apiCaller = new ProtectedApiCallHelper(httpClient);
+                    return await apiCaller.PostWebApiCall($"{Config.ApiUrl}v1.0/{apiCall}", result.AccessToken, content);
+                } catch (Exception ex) {
+                    s_logger.Error(ex, "Error whilte calling - apiCall:{apiCall} error:{errorMessage}", apiCall, ex.Message);
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error whilte calling - apiCall:{apiCall}");
+                    Console.ResetColor();
+                }
             }
 
             return null;
@@ -543,9 +562,14 @@ namespace SlackToTeams.Utils {
 
         #region Method - ValidHostedContent
 
-        public static bool ValidHostedContent(string mimetype) {
-            if (!string.IsNullOrWhiteSpace(mimetype)) {
-                return mimetype switch {
+        public static bool ValidHostedContent(SlackAttachment attachment) {
+            if (
+                attachment != null &&
+                attachment.Size < CONTENT_MAX_SIZE &&
+                attachment.Size > 0 &&
+                !string.IsNullOrWhiteSpace(attachment.MimeType)
+            ) {
+                return attachment.MimeType switch {
                     "image/gif" => true,
                     "image/jpeg" => true,
                     "image/png" => true,
