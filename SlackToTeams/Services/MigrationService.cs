@@ -403,17 +403,13 @@ namespace SlackToTeams.Services {
                                     message.Attachments.Count > 0
                                 ) {
                                     foreach (var attachment in message.Attachments) {
-                                        // Check if the attachment is not an image
                                         if (
                                             attachment != null &&
-                                            !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                                            !GraphHelper.ValidHostedContent(attachment)
+                                            !string.IsNullOrWhiteSpace(attachment.SlackURL)
                                         ) {
                                             await UploadFileToPath(graphHelper, teamID, channel.DisplayName, attachment);
                                         }
                                     }
-
-                                    await AddAttachmentsToMessage(graphHelper, teamID, channelID, message);
                                 }
                             }
                         }
@@ -583,11 +579,9 @@ namespace SlackToTeams.Services {
                                             message.Attachments.Count > 0
                                         ) {
                                             foreach (var attachment in message.Attachments) {
-                                                // Check if the attachment is not an image
                                                 if (
                                                     attachment != null &&
-                                                    !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                                                    !GraphHelper.ValidHostedContent(attachment)
+                                                    !string.IsNullOrWhiteSpace(attachment.SlackURL)
                                                 ) {
                                                     // If so upload to teams drive
                                                     await attachment.DownloadFile(

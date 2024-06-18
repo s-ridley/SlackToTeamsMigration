@@ -79,13 +79,15 @@ namespace SlackToTeams.Models {
 
         private string FormattedAttachments() {
             StringBuilder formattedText = new();
-            if (Attachments != null) {
+            if (
+                Attachments != null &&
+                Attachments.Count > 0
+            ) {
                 foreach (var attachment in Attachments) {
                     if (
                         attachment != null &&
                         !string.IsNullOrWhiteSpace(attachment.Name) &&
-                        !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                        !GraphHelper.ValidHostedContent(attachment)
+                        !string.IsNullOrWhiteSpace(attachment.SlackURL)
                     ) {
                         _ = formattedText.Append($"[{attachment.Name}]<br>");
                     }
@@ -163,13 +165,16 @@ namespace SlackToTeams.Models {
 
         public string HtmlAttachments() {
             StringBuilder? formattedText = null;
-            if (Attachments != null) {
+
+            if (
+                Attachments != null &&
+                Attachments.Count > 0
+            ) {
                 foreach (var attachment in Attachments) {
                     if (
                         attachment != null &&
                         !string.IsNullOrWhiteSpace(attachment.Name) &&
-                        !string.IsNullOrWhiteSpace(attachment.SlackURL) &&
-                        !GraphHelper.ValidHostedContent(attachment)
+                        !string.IsNullOrWhiteSpace(attachment.SlackURL)
                     ) {
                         formattedText ??= new();
                         _ = formattedText.Append($"{attachment.Name}{Environment.NewLine}");

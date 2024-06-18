@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Collections.Generic;
 using System.Text;
 using System.Web;
 using Newtonsoft.Json;
@@ -77,30 +76,41 @@ namespace SlackToTeams.Utils {
                             attachments != null &&
                             attachments.Count > 0
                         ) {
-                            foreach (var attachment in attachments) {
-                                try {
-                                    // Check if the attachment is an image
-                                    if (GraphHelper.ValidHostedContent(attachment)) {
-                                        // Download the file and convert to base64
-                                        attachment.DownloadBytes().Wait();
-                                        if (
-                                            attachment.ContentBytes != null &&
-                                            attachment.ContentBytes.Length > 0
-                                        ) {
-                                            // Add a SlackHostedContent object to the message
-                                            hostedContents ??= [];
-                                            hostedContents.Add(
-                                                new SlackHostedContent(
-                                                    attachment.ContentBytes,
-                                                    attachment.MimeType,
-                                                    attachment.Height,
-                                                    attachment.Width
-                                                )
-                                            );
+                            var imageAttachments = attachments.Where(a => GraphHelper.ValidImageMimeType(a.MimeType));
+
+                            if (
+                                imageAttachments != null &&
+                                imageAttachments.Any()
+                            ) {
+                                if (GraphHelper.ValidHostedContent(imageAttachments)) {
+                                    // Remove image attachments from attachments result
+                                    attachments = attachments.Where(a => !GraphHelper.ValidImageMimeType(a.MimeType)).ToList();
+
+                                    // Process the image attachments as HostedContent
+                                    foreach (var attachment in imageAttachments) {
+                                        try {
+                                            // Check if the attachment is an image
+                                            // Download the file and convert to base64
+                                            attachment.DownloadBytes().Wait();
+                                            if (
+                                                attachment.ContentBytes != null &&
+                                                attachment.ContentBytes.Length > 0
+                                            ) {
+                                                // Add a SlackHostedContent object to the message
+                                                hostedContents ??= [];
+                                                hostedContents.Add(
+                                                    new SlackHostedContent(
+                                                        attachment.ContentBytes,
+                                                        attachment.MimeType,
+                                                        attachment.Height,
+                                                        attachment.Width
+                                                    )
+                                                );
+                                            }
+                                        } catch (Exception ex) {
+                                            Console.WriteLine(ex.Message);
                                         }
                                     }
-                                } catch (Exception ex) {
-                                    Console.WriteLine(ex.Message);
                                 }
                             }
                         }

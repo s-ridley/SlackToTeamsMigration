@@ -35,7 +35,7 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Constants
 
-        public const long CONTENT_MAX_SIZE = 4100000;
+        public const long CONTENT_MAX_SIZE = 2000000;
 
         #endregion
         #region Poperties
@@ -562,14 +562,42 @@ namespace SlackToTeams.Utils {
 
         #region Method - ValidHostedContent
 
-        public static bool ValidHostedContent(SlackAttachment attachment) {
+        public static bool ValidHostedContent(IEnumerable<SlackAttachment>? attachments) {
+            bool result = false;
             if (
-                attachment != null &&
-                attachment.Size < CONTENT_MAX_SIZE &&
-                attachment.Size > 0 &&
-                !string.IsNullOrWhiteSpace(attachment.MimeType)
+                attachments != null &&
+                attachments.Any()
             ) {
-                return attachment.MimeType switch {
+                long? totalBytes = 0;
+                foreach (var attachment in attachments) {
+                    if (
+                        attachment != null &&
+                        attachment.Size > 0 &&
+                        !string.IsNullOrWhiteSpace(attachment.MimeType)
+                    ) {
+                        result = ValidImageMimeType(attachment.MimeType);
+                        totalBytes += attachment.Size;
+                        if (!result) {
+                            break;
+                        }
+                    } else {
+                        result = false;
+                        break;
+                    }
+                }
+                if (result) {
+                    result = (totalBytes < CONTENT_MAX_SIZE);
+                }
+            }
+            return result;
+        }
+
+        #endregion
+        #region Method - ValidImageMimeType
+
+        public static bool ValidImageMimeType(string? mimeType) {
+            if (!string.IsNullOrWhiteSpace(mimeType)) {
+                return mimeType switch {
                     "image/jpg" or "image/jpeg" or "image/png" => true,
                     _ => false,
                 };
