@@ -350,6 +350,34 @@ namespace SlackToTeams.Services {
         }
 
         #endregion
+        #region Method - ContiuneAfterError
+
+        // If migration failed and you're left with a team stuck in migration mode, use this function!
+        private void ContiuneAfterError() {
+            _logger.LogDebug("Error has occured checking if user wants to continue.");
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.DarkYellow;
+            Console.Write("An error has occurred do you want to continue? [y/N] ");
+            Console.ResetColor();
+            string? input = Console.ReadLine();
+
+            if (
+                !string.IsNullOrEmpty(input) &&
+                (
+                    input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
+                    input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
+                    input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
+                )
+            ) {
+                _logger.LogDebug("User DOES want to continue.");
+            } else {
+                _logger.LogDebug("User DOES NOT want to continue.");
+                Console.WriteLine("Exiting...");
+                Environment.Exit(1);
+            }
+        }
+
+        #endregion
         #region Upload Handling
 
         #region Method - UploadAttachmentsToTeam
@@ -570,14 +598,19 @@ namespace SlackToTeams.Services {
                                             }
                                         }
 
+                                        ChatMessage? chatMessage;
                                         if (message.IsInThread && !message.IsParentThread) {
                                             _logger.LogDebug("Processing message as in thread sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
-                                            _ = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);
+                                            chatMessage = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);
                                         } else {
                                             _logger.LogDebug("Processing message sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
-                                            _ = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
+                                            chatMessage = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
                                         }
-                                        HtmlHelper.MessageToHtml(htmlFile, message);
+
+                                        // Only export the message to html if the send suceeds
+                                        if (chatMessage != null) {
+                                            HtmlHelper.MessageToHtml(htmlFile, message);
+                                        }
                                     }
                                 }
                                 try {
@@ -1047,12 +1080,21 @@ namespace SlackToTeams.Services {
                 Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
+                if (
+                    odataError != null &&
+                    odataError.Error != null &&
+                    !string.IsNullOrEmpty(odataError.Error.Code) &&
+                    !odataError.Error.Code.Equals("Conflict")
+                ) {
+                    ContiuneAfterError();
+                }
                 return null;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
                 _logger.LogError(ex, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
+                ContiuneAfterError();
                 return null;
             }
         }
@@ -1069,12 +1111,21 @@ namespace SlackToTeams.Services {
                 Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
                 _logger.LogError(odataError, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
+                if (
+                    odataError != null &&
+                    odataError.Error != null &&
+                    !string.IsNullOrEmpty(odataError.Error.Code) &&
+                    !odataError.Error.Code.Equals("Conflict")
+                ) {
+                    ContiuneAfterError();
+                }
                 return null;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
                 _logger.LogError(ex, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
+                ContiuneAfterError();
                 return null;
             }
         }
