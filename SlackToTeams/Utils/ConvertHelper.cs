@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Text.RegularExpressions;
 using Serilog;
 using SlackToTeams.Models;
@@ -89,22 +88,8 @@ namespace SlackToTeams.Utils {
             string? result = null;
 
             if (!string.IsNullOrWhiteSpace(slackReaction)) {
-                TextInfo currentTextInfo = CultureInfo.CurrentCulture.TextInfo;
-
                 string processedReaction = slackReaction.Replace("_", string.Empty);
-                /*
-                string processedReaction = string.Empty;
 
-                string[] reactionArray = slackReaction.Split('_');
-                if (
-                    reactionArray != null &&
-                    reactionArray.Length > 0
-                ) {
-                    foreach (string reaction in reactionArray) {
-                        processedReaction += currentTextInfo.ToTitleCase(reaction);
-                    }
-                }
-                */
                 // Check for exact match
                 foreach (FieldInfo field in typeof(Emoji).GetFields().Where(f => f.Name.Equals(processedReaction, StringComparison.CurrentCultureIgnoreCase))) {
                     object? rawObject = field.GetRawConstantValue();
