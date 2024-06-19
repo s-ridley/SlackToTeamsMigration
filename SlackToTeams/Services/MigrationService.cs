@@ -127,30 +127,44 @@ namespace SlackToTeams.Services {
                         /*
                         ** MIGRATE MESSAGES FROM SLACK TO TEAMS
                         */
-                        teamId = await CreateTeam(graphHelper);
+                        // Get the team name
+                        SlackTeam? team = _config.Get<SlackTeam>();
 
-                        if (!string.IsNullOrWhiteSpace(teamId)) {
-                            // Scan and send messages in Teams
-                            await ScanAndHandleMessages(graphHelper, slackArchiveBasePath, channelList, userList, teamId);
+                        if (
+                            team != null &&
+                            !string.IsNullOrWhiteSpace(team.DisplayName)
+                        ) {
+                            teamId = await CreateTeam(graphHelper);
 
-                            Console.WriteLine();
-                            Console.ForegroundColor = ConsoleColor.DarkYellow;
-                            Console.Write("Do you want to finish migrating the team? [y/N] ");
-                            Console.ResetColor();
-                            input = Console.ReadLine();
+                            if (!string.IsNullOrWhiteSpace(teamId)) {
+                                // Scan and send messages in Teams
+                                await ScanAndHandleMessages(team, graphHelper, slackArchiveBasePath, channelList, userList, teamId);
 
-                            if (
-                                !string.IsNullOrEmpty(input) &&
-                                (
-                                    input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
-                                    input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
-                                    input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
-                                )
-                            ) {
-                                if (!string.IsNullOrEmpty(teamId)) {
-                                    await FinishMigrating(graphHelper, teamId);
+                                Console.WriteLine();
+                                Console.ForegroundColor = ConsoleColor.DarkYellow;
+                                Console.Write("Do you want to finish migrating the team? [y/N] ");
+                                Console.ResetColor();
+                                input = Console.ReadLine();
+
+                                if (
+                                    !string.IsNullOrEmpty(input) &&
+                                    (
+                                        input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
+                                        input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
+                                        input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
+                                    )
+                                ) {
+                                    if (!string.IsNullOrEmpty(teamId)) {
+                                        await FinishMigrating(graphHelper, teamId);
+                                    }
                                 }
                             }
+                        } else {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine("Error team.json is invalid please make sure at least a 'displayName' is configured");
+                            Console.ResetColor();
+                            _logger.LogError("Error team.json is invalid please make sure at least a 'displayName' is configured");
+                            Environment.Exit(1);
                         }
                     } else {
                         /*
@@ -394,21 +408,29 @@ namespace SlackToTeams.Services {
 
                     if (!string.IsNullOrWhiteSpace(channelID)) {
                         string slackChannelFilesPath = Path.Combine(slackArchiveBasePath, channel.DisplayName);
+                        string[] channelFiles = Directory.GetFiles(slackChannelFilesPath, "*.old");
 
-                        foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath, "*.old")) {
-                            foreach (var message in MessageHandling.GetMessagesForDay(channel.DisplayName, file, channelList, userList)) {
-                                if (
-                                    message != null &&
-                                    message.Attachments != null &&
-                                    message.Attachments.Count > 0
-                                ) {
-                                    foreach (var attachment in message.Attachments) {
-                                        if (
-                                            attachment != null &&
-                                            !string.IsNullOrWhiteSpace(attachment.SlackURL)
-                                        ) {
-                                            await UploadFileToPath(graphHelper, teamID, channel.DisplayName, attachment);
+                        if (
+                            channelFiles != null &&
+                            channelFiles.Length > 0
+                        ) {
+                            foreach (var file in channelFiles) {
+                                foreach (var message in MessageHandling.GetMessagesForDay(channel.DisplayName, file, channelList, userList)) {
+                                    if (
+                                        message != null &&
+                                        message.Attachments != null &&
+                                        message.Attachments.Count > 0
+                                    ) {
+                                        foreach (var attachment in message.Attachments) {
+                                            if (
+                                                attachment != null &&
+                                                !string.IsNullOrWhiteSpace(attachment.SlackURL)
+                                            ) {
+                                                await UploadFileToPath(graphHelper, teamID, channel.DisplayName, attachment);
+                                            }
                                         }
+
+                                        await AddAttachmentsToMessage(graphHelper, teamID, channelID, message);
                                     }
                                 }
                             }
@@ -546,7 +568,7 @@ namespace SlackToTeams.Services {
 
         #region Method - ScanAndHandleMessages
 
-        private async Task ScanAndHandleMessages(GraphHelper graphHelper, string slackArchiveBasePath, List<SlackChannel> channelList, List<SlackUser> userList, string teamId) {
+        private async Task ScanAndHandleMessages(SlackTeam team, GraphHelper graphHelper, string slackArchiveBasePath, List<SlackChannel> channelList, List<SlackUser> userList, string teamId) {
             _logger.LogDebug("ScanAndHandleMessages - Start");
 
             foreach (var channel in channelList) {
@@ -559,6 +581,8 @@ namespace SlackToTeams.Services {
                         !string.IsNullOrEmpty(channel.SlackFolder)
                     ) {
                         string slackChannelFilesPath = Path.Combine(slackArchiveBasePath, channel.SlackFolder);
+                        string channelDownloadFolder = $"files/{ConvertHelper.FileSystemSafe(team.DisplayName)}/{channel.SlackFolder}";
+                        string chanelHtmlFolder = $"html/{ConvertHelper.FileSystemSafe(team.DisplayName)}/{channel.SlackFolder}";
 
                         if (Path.Exists(slackChannelFilesPath)) {
                             Console.ForegroundColor = ConsoleColor.Cyan;
@@ -567,71 +591,77 @@ namespace SlackToTeams.Services {
 
                             _logger.LogDebug("Processing channel:{channelName} folder:{slackExportPath}", channel.DisplayName, slackChannelFilesPath);
 
-                            string htmlFile = Path.Combine(slackChannelFilesPath, "export.html");
-                            HtmlHelper.StartHtml(htmlFile);
+                            string[] channelFiles = Directory.GetFiles(slackChannelFilesPath, "*.json");
 
-                            foreach (var file in MessageHandling.GetFilesForChannel(slackChannelFilesPath, "*.json")) {
-                                _logger.LogDebug("Processing file:{file}", file);
-                                foreach (var message in MessageHandling.GetMessagesForDay(channel.DisplayName, file, channelList, userList)) {
-                                    if (message != null) {
-                                        if (
-                                            message.Attachments != null &&
-                                            message.Attachments.Count > 0
-                                        ) {
-                                            foreach (var attachment in message.Attachments) {
-                                                if (
-                                                    attachment != null &&
-                                                    !string.IsNullOrWhiteSpace(attachment.SlackURL)
-                                                ) {
-                                                    // If so upload to teams drive
-                                                    await attachment.DownloadFile(
-                                                        slackArchiveBasePath,   // baseDownloadPath
-                                                        true                    //overwriteFile
-                                                    );
+                            if (
+                                channelFiles != null &&
+                                channelFiles.Length > 0
+                            ) {
+                                HtmlHelper.StartHtml(chanelHtmlFolder);
+
+                                foreach (var file in channelFiles) {
+                                    _logger.LogDebug("Processing file:{file}", file);
+                                    foreach (var message in MessageHandling.GetMessagesForDay(channel.DisplayName, file, channelList, userList)) {
+                                        if (message != null) {
+                                            if (
+                                                message.Attachments != null &&
+                                                message.Attachments.Count > 0
+                                            ) {
+                                                foreach (var attachment in message.Attachments) {
+                                                    if (
+                                                        attachment != null &&
+                                                        !string.IsNullOrWhiteSpace(attachment.SlackURL)
+                                                    ) {
+                                                        // If so upload to teams drive
+                                                        await attachment.DownloadFile(
+                                                            channelDownloadFolder,  // downloadFolder
+                                                            true                    // overwriteFile
+                                                        );
+                                                    }
                                                 }
                                             }
-                                        }
 
-                                        ChatMessage? chatMessage;
-                                        if (message.IsInThread && !message.IsParentThread) {
-                                            _logger.LogDebug("Processing message as in thread sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
-                                            chatMessage = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);
-                                        } else {
-                                            _logger.LogDebug("Processing message sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
-                                            chatMessage = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
-                                        }
+                                            ChatMessage? chatMessage;
+                                            if (message.IsInThread && !message.IsParentThread) {
+                                                _logger.LogDebug("Processing message as in thread sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
+                                                chatMessage = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);
+                                            } else {
+                                                _logger.LogDebug("Processing message sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
+                                                chatMessage = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
+                                            }
 
-                                        // Only export the message to html if the send suceeds
-                                        if (chatMessage != null) {
-                                            HtmlHelper.MessageToHtml(htmlFile, message);
+                                            // Only export the message to html if the send suceeds
+                                            if (chatMessage != null) {
+                                                HtmlHelper.MessageToHtml(chanelHtmlFolder, message);
+                                            }
                                         }
                                     }
+                                    try {
+                                        // Rename the file so it will not be processed again
+                                        File.Move(file, Path.ChangeExtension(file, ".old"));
+                                        _logger.LogDebug("Mark file:{file} as done", file);
+                                    } catch (Exception ex) {
+                                        Console.ForegroundColor = ConsoleColor.Red;
+                                        Console.WriteLine($"Error renaming {file} to old: {ex.Message}");
+                                        Console.ResetColor();
+                                        _logger.LogError(ex, "Error renaming {file} to old error:{errorMessage}", file, ex.Message);
+                                        Environment.Exit(1);
+                                    }
                                 }
-                                try {
-                                    // Rename the file so it will not be processed again
-                                    File.Move(file, Path.ChangeExtension(file, ".old"));
-                                    _logger.LogDebug("Mark file:{file} as done", file);
-                                } catch (Exception ex) {
-                                    Console.ForegroundColor = ConsoleColor.Red;
-                                    Console.WriteLine($"Error renaming {file} to old: {ex.Message}");
-                                    Console.ResetColor();
-                                    _logger.LogError(ex, "Error renaming {file} to old error:{errorMessage}", file, ex.Message);
-                                    Environment.Exit(1);
-                                }
-                            }
 
-                            HtmlHelper.EndHtml(htmlFile);
+                                HtmlHelper.EndHtml(chanelHtmlFolder);
+                            }
                         } else {
                             Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine($"Channel folder does not exist :{slackChannelFilesPath}");
+                            Console.WriteLine($"FolderName folder does not exist :{slackChannelFilesPath}");
                             Console.ResetColor();
-                            _logger.LogWarning("Channel folder does not exist :{slackChannelFilesPath}", slackChannelFilesPath);
+                            _logger.LogWarning("FolderName folder does not exist :{slackChannelFilesPath}", slackChannelFilesPath);
                         }
                     } else {
                         Console.ForegroundColor = ConsoleColor.Red;
                         Console.WriteLine($"Cannot find ID for - teamID:{teamId}: channel:{channel.DisplayName}:");
                         Console.ResetColor();
-                        _logger.LogWarning("Channel details invalid ID[{channelId}] folder:{slackFolder}", channelId, channel.SlackFolder);
+                        _logger.LogWarning("FolderName details invalid ID[{channelId}] folder:{slackFolder}", channelId, channel.SlackFolder);
                     }
                 }
             }
@@ -663,7 +693,7 @@ namespace SlackToTeams.Services {
             }
 
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Channel {channelName} [{channelId}] has been migrated!");
+            Console.WriteLine($"FolderName {channelName} [{channelId}] has been migrated!");
             Console.ResetColor();
             _logger.LogDebug("CompleteChannelMigrationAsync - End");
         }
@@ -1007,7 +1037,7 @@ namespace SlackToTeams.Services {
                 throw;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error getting Channel {channelName}: {ex.Message}");
+                Console.WriteLine($"Error getting FolderName {channelName}: {ex.Message}");
                 Console.ResetColor();
                 _logger.LogError(ex, "GetChannelByName - Error getting chanelId name:{channelName} error:{errorMessage}", channelName, ex.Message);
                 Environment.Exit(1);
@@ -1015,7 +1045,7 @@ namespace SlackToTeams.Services {
 
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"Got Channel [{channelName}] ID [{channelId}]");
+            Console.WriteLine($"Got FolderName [{channelName}] ID [{channelId}]");
             Console.ResetColor();
 
             _logger.LogDebug("GetChannelByName - End ID[{channelId}]", channelId);
@@ -1043,7 +1073,7 @@ namespace SlackToTeams.Services {
                     }
                 } catch (Exception ex) {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Error {actionName} Channel '{channel.DisplayName}', {ex.Message}");
+                    Console.WriteLine($"Error {actionName} FolderName '{channel.DisplayName}', {ex.Message}");
                     Console.ResetColor();
                     _logger.LogError(ex, "CreateChannel - Error {actionName} channel name:{channelName} error:{errorMessage}", actionName, channel.DisplayName, ex.Message);
                     return channelId;
@@ -1051,7 +1081,7 @@ namespace SlackToTeams.Services {
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"CreateChannel - Sucess {actionName} Channel '{channel.DisplayName}' [{channelId}]");
+                Console.WriteLine($"CreateChannel - Sucess {actionName} FolderName '{channel.DisplayName}' [{channelId}]");
                 Console.ResetColor();
             }
 
@@ -1133,14 +1163,14 @@ namespace SlackToTeams.Services {
                 await graphHelper.UploadFileToTeamChannelAsync(teamId, channelName, attachment);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error adding attachment to message TeamID[{teamId}] Channel Name:{channelName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
+                Console.WriteLine($"Error adding attachment to message TeamID[{teamId}] FolderName Name:{channelName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "Error adding attachment to message TeamID[{teamId}] Channel Name:{channelName} code:{errorCode} message:{errorMessage}", teamId, channelName, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "Error adding attachment to message TeamID[{teamId}] FolderName Name:{channelName} code:{errorCode} message:{errorMessage}", teamId, channelName, odataError?.Error?.Code, odataError?.Error?.Message);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error uploading file: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "UploadFileToPath - Error adding attachment to message TeamID[{teamId}] Channel Name:{channelName} error:{errorMessage}", teamId, channelName, ex.Message);
+                _logger.LogError(ex, "UploadFileToPath - Error adding attachment to message TeamID[{teamId}] FolderName Name:{channelName} error:{errorMessage}", teamId, channelName, ex.Message);
             }
         }
 

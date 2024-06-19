@@ -12,6 +12,9 @@ namespace SlackToTeams.Utils {
         [GeneratedRegex(@"<\@\w+>")]
         private static partial Regex UserIdRegex();
 
+        [GeneratedRegex(@"\W", RegexOptions.IgnoreCase)]
+        private static partial Regex SafeFileRegex();
+
         #endregion
         #region Method - ReplaceUserIdWithName
 
@@ -38,6 +41,19 @@ namespace SlackToTeams.Utils {
             } else {
                 return textToCheck;
             }
+        }
+
+        #endregion
+        #region Method - FileSystemSafe
+
+        public static string FileSystemSafe(string toConvert) {
+            string result = string.Empty;
+
+            if (!string.IsNullOrEmpty(toConvert)) {
+                result = SafeFileRegex().Replace(toConvert, "");
+            }
+
+            return result;
         }
 
         #endregion

@@ -3,6 +3,7 @@
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using SlackToTeams.Utils;
 using System.Globalization;
 using System.Runtime.Serialization;
 
@@ -48,7 +49,7 @@ namespace SlackToTeams.Models {
             IsArchived = isArchived;
             SlackId = slackId;
             SlackCreatorId = slackCreatorId;
-            SlackFolder = displayName;
+            SlackFolder = ConvertHelper.FileSystemSafe(displayName);
         }
 
         #endregion

@@ -15,21 +15,12 @@ namespace SlackToTeams.Utils {
         private static readonly ILogger s_logger = Log.ForContext(typeof(MessageHandling));
 
         #endregion
-        #region Method - GetFilesForChannel
-
-        public static IEnumerable<string> GetFilesForChannel(string channelPath, string searchPattern) {
-            foreach (var file in Directory.GetFiles(channelPath, searchPattern)) {
-                yield return file;
-            }
-        }
-
-        #endregion
         #region Method - GetMessagesForDay
 
         public static IEnumerable<SlackMessage> GetMessagesForDay(string channel, string path, List<SlackChannel> channels, List<SlackUser> users) {
             s_logger.Debug("Getting messaged for channel:{channel} from file:{path}", channel, path);
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"Channel {channel} File {path}");
+            Console.WriteLine($"FolderName {channel} File {path}");
             Console.ResetColor();
 
             if (File.Exists(path)) {
@@ -68,7 +59,7 @@ namespace SlackToTeams.Utils {
                             }
                         }
 
-                        List<SlackAttachment>? attachments = GetFormattedAttachments(channel, obj);
+                        List<SlackAttachment>? attachments = GetFormattedAttachments(obj);
 
                         List<SlackHostedContent>? hostedContents = null;
 
@@ -450,13 +441,13 @@ namespace SlackToTeams.Utils {
                 }
             }
 
-            return "Unknown Channel";
+            return "Unknown FolderName";
         }
 
         #endregion
         #region Method - GetFormattedAttachments
 
-        static List<SlackAttachment>? GetFormattedAttachments(string channel, JObject obj) {
+        static List<SlackAttachment>? GetFormattedAttachments(JObject obj) {
             var attachmentsArray = obj.SelectTokens("files[*]").ToList();
 
             List<SlackAttachment>? formattedAttachments = null;
@@ -485,7 +476,6 @@ namespace SlackToTeams.Utils {
                         string? created = attachment.SelectToken("created")?.ToString();
 
                         SlackAttachment slackAttachment = new(
-                            channel,
                             url,                                                    // slackUrl
                             name,
                             title,
