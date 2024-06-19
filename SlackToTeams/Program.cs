@@ -35,4 +35,19 @@ var host = AppStartup();
 
 var migrationService = ActivatorUtilities.CreateInstance<MigrationService>(host.Services);
 
-await migrationService.MigrateAsync();
+Console.CancelKeyPress += (sender, eventArgs) => {
+    // Cancel the event and call the close process
+    eventArgs.Cancel = true;
+
+    Console.ForegroundColor = ConsoleColor.Magenta;
+    Console.WriteLine();
+    Console.WriteLine("===========================================");
+    Console.WriteLine("      Ctrl+C detected. Cleaning up...      ");
+    Console.WriteLine("===========================================");
+    Console.WriteLine();
+    Console.ResetColor();
+
+    migrationService.StopAsync();
+};
+
+await migrationService.StartAsync();

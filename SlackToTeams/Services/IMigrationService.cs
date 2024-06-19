@@ -1,5 +1,6 @@
 ﻿namespace SlackToTeams.Services {
     internal interface IMigrationService {
-        public Task MigrateAsync();
+        public Task StartAsync();
+        public void StopAsync();
     }
 }
