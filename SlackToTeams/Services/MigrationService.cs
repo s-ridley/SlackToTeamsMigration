@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
 using Newtonsoft.Json;
+using SlackToTeams.Enums;
 using SlackToTeams.Models;
 using SlackToTeams.Utils;
 
@@ -31,14 +32,6 @@ namespace SlackToTeams.Services {
         #region Method - MigrateAsync
 
         public async Task MigrateAsync() {
-            Console.ForegroundColor = ConsoleColor.DarkRed;
-            Console.WriteLine();
-            Console.WriteLine("================================");
-            Console.WriteLine("|| [MIGRATION] Slack -> Teams ||");
-            Console.WriteLine("================================");
-            Console.WriteLine();
-            Console.ResetColor();
-
             _logger.LogDebug("Migration - START");
 
             /*
@@ -47,10 +40,38 @@ namespace SlackToTeams.Services {
             AuthenticationConfig? config = _config.Get<AuthenticationConfig>();
 
             if (config != null) {
-                string? input;
-                string? teamId = null;
+                ExportMode slackExportMode = _config.GetValue<ExportMode>("SlackExportMode");
 
-                GraphHelper graphHelper = new(config);
+                Console.ForegroundColor = ConsoleColor.DarkRed;
+                Console.WriteLine();
+                Console.WriteLine("===========================================");
+
+                switch (slackExportMode) {
+                    case ExportMode.TeamsHtml:
+                        Console.WriteLine("||  [MIGRATION] Slack -> Teams and HTML  ||");
+                        break;
+                    case ExportMode.Teams:
+                        Console.WriteLine("||  [MIGRATION] Slack -> Teams           ||");
+                        break;
+                    case ExportMode.Html:
+                        Console.WriteLine("||  [MIGRATION] Slack -> HTML            ||");
+                        break;
+                }
+
+                Console.WriteLine("===========================================");
+                Console.WriteLine();
+                Console.ResetColor();
+
+                string? input;
+                GraphHelper? graphHelper = null;
+
+                // The GraphHelper is only needed in the 
+                if (
+                    slackExportMode == ExportMode.Teams ||
+                    slackExportMode == ExportMode.TeamsHtml
+                ) {
+                    graphHelper = new(config);
+                }
 
                 /*
                 ** FILE HANDLING
@@ -110,7 +131,14 @@ namespace SlackToTeams.Services {
                     Console.WriteLine();
 
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.Write("Do you want to create a new migration team and migrate messages? [y/N] ");
+                    if (
+                        slackExportMode == ExportMode.Teams ||
+                        slackExportMode == ExportMode.TeamsHtml
+                    ) {
+                        Console.Write("Do you want to create a new migration team and migrate messages? [y/N] ");
+                    } else {
+                        Console.Write("Do you want to create an HTML archive of the messages? [y/N] ");
+                    }
                     Console.ResetColor();
                     input = Console.ReadLine();
 
@@ -127,35 +155,55 @@ namespace SlackToTeams.Services {
                         /*
                         ** MIGRATE MESSAGES FROM SLACK TO TEAMS
                         */
-                        // Get the team name
+
+                        // Get the team details
                         SlackTeam? team = _config.Get<SlackTeam>();
 
                         if (
                             team != null &&
                             !string.IsNullOrWhiteSpace(team.DisplayName)
                         ) {
-                            teamId = await CreateTeam(graphHelper);
+                            if (graphHelper != null) {
+                                team.TeamId = await CreateTeam(graphHelper);
+                            }
 
-                            if (!string.IsNullOrWhiteSpace(teamId)) {
+                            if (
+                                (
+                                    (
+                                        slackExportMode == ExportMode.Teams ||
+                                        slackExportMode == ExportMode.TeamsHtml
+                                    ) &&
+                                    !string.IsNullOrWhiteSpace(team.TeamId)
+                                ) ||
+                                slackExportMode == ExportMode.Html
+                            ) {
                                 // Scan and send messages in Teams
-                                await ScanAndHandleMessages(team, graphHelper, slackArchiveBasePath, channelList, userList, teamId);
-
-                                Console.WriteLine();
-                                Console.ForegroundColor = ConsoleColor.DarkYellow;
-                                Console.Write("Do you want to finish migrating the team? [y/N] ");
-                                Console.ResetColor();
-                                input = Console.ReadLine();
+                                await ScanAndHandleMessages(team, graphHelper, slackArchiveBasePath, channelList, userList, slackExportMode);
 
                                 if (
-                                    !string.IsNullOrEmpty(input) &&
+                                    graphHelper != null &&
                                     (
-                                        input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
-                                        input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
-                                        input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
+                                        slackExportMode == ExportMode.Teams ||
+                                        slackExportMode == ExportMode.TeamsHtml
                                     )
                                 ) {
-                                    if (!string.IsNullOrEmpty(teamId)) {
-                                        await FinishMigrating(graphHelper, teamId);
+                                    Console.WriteLine();
+                                    Console.ForegroundColor = ConsoleColor.DarkYellow;
+                                    Console.Write("Do you want to finish migrating the team? [y/N] ");
+                                    Console.ResetColor();
+                                    input = Console.ReadLine();
+
+                                    if (
+                                        !string.IsNullOrEmpty(input) &&
+                                        (
+                                            input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
+                                            input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
+                                            input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
+                                        )
+                                    ) {
+                                        if (!string.IsNullOrEmpty(team.TeamId)) {
+                                            await FinishMigrating(graphHelper, team.TeamId);
+                                        }
                                     }
                                 }
                             }
@@ -166,7 +214,13 @@ namespace SlackToTeams.Services {
                             _logger.LogError("Error team.json is invalid please make sure at least a 'displayName' is configured");
                             Environment.Exit(1);
                         }
-                    } else {
+                    } else if (
+                        graphHelper != null &&
+                        (
+                            slackExportMode == ExportMode.Teams ||
+                            slackExportMode == ExportMode.TeamsHtml
+                        )
+                    ) {
                         /*
                         ** SHOW OPTION TO CLOSE MIGRATION BY TEAM NAME
                         */
@@ -198,6 +252,7 @@ namespace SlackToTeams.Services {
                                     input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
                                 )
                             ) {
+                                string? teamId = null;
                                 while (string.IsNullOrEmpty(teamId)) {
                                     Console.ForegroundColor = ConsoleColor.DarkYellow;
                                     Console.WriteLine("Which team do you want to finish migrating a team?");
@@ -227,51 +282,59 @@ namespace SlackToTeams.Services {
                         }
                     }
 
-                    /*
-                    ** MIGRATE ATTACHMENTS TO EXISTING TEAM
-                    */
-                    Console.WriteLine();
-                    Console.ForegroundColor = ConsoleColor.DarkYellow;
-                    Console.Write("Do you want to migrate attachments to a team? [y/N] ");
-                    Console.ResetColor();
-                    input = Console.ReadLine();
-
                     if (
-                        !string.IsNullOrEmpty(input) &&
+                        graphHelper != null &&
                         (
-                            input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
-                            input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
-                            input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
+                            slackExportMode == ExportMode.Teams ||
+                            slackExportMode == ExportMode.TeamsHtml
                         )
                     ) {
-                        string? uploadTeamId = null;
-                        var teams = await ListJoinedTeamsAsync(graphHelper);
+                        /*
+                        ** MIGRATE ATTACHMENTS TO EXISTING TEAM
+                        */
+                        Console.WriteLine();
+                        Console.ForegroundColor = ConsoleColor.DarkYellow;
+                        Console.Write("Do you want to migrate attachments to a team? [y/N] ");
+                        Console.ResetColor();
+                        input = Console.ReadLine();
+
                         if (
-                            teams != null &&
-                            teams.Value != null
+                            !string.IsNullOrEmpty(input) &&
+                            (
+                                input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
+                                input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) ||
+                                input.Equals("true", StringComparison.CurrentCultureIgnoreCase)
+                            )
                         ) {
-                            int index = 0;
-                            Console.ForegroundColor = ConsoleColor.White;
-                            foreach (var team in teams.Value) {
-                                Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
-                                index++;
-                            }
-                            Console.ResetColor();
-
-                            int choice;
-                            do {
-                                choice = UserInputIndexOfList();
-                                if (choice < 0 || choice >= teams.Value.Count) {
-                                    Console.ForegroundColor = ConsoleColor.Red;
-                                    Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Value.Count}");
-                                    Console.ResetColor();
+                            string? uploadTeamId = null;
+                            var teams = await ListJoinedTeamsAsync(graphHelper);
+                            if (
+                                teams != null &&
+                                teams.Value != null
+                            ) {
+                                int index = 0;
+                                Console.ForegroundColor = ConsoleColor.White;
+                                foreach (var team in teams.Value) {
+                                    Console.WriteLine($"[{index}] {team.DisplayName} ({team.Id})");
+                                    index++;
                                 }
-                            } while (choice < 0 || choice >= teams.Value.Count);
+                                Console.ResetColor();
 
-                            uploadTeamId = teams.Value[choice].Id;
-                        }
-                        if (!string.IsNullOrEmpty(uploadTeamId)) {
-                            await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, channelList, userList, uploadTeamId);
+                                int choice;
+                                do {
+                                    choice = UserInputIndexOfList();
+                                    if (choice < 0 || choice >= teams.Value.Count) {
+                                        Console.ForegroundColor = ConsoleColor.Red;
+                                        Console.WriteLine($"Not a valid selection, must be between 0 and {teams.Value.Count}");
+                                        Console.ResetColor();
+                                    }
+                                } while (choice < 0 || choice >= teams.Value.Count);
+
+                                uploadTeamId = teams.Value[choice].Id;
+                            }
+                            if (!string.IsNullOrEmpty(uploadTeamId)) {
+                                await UploadAttachmentsToTeam(graphHelper, slackArchiveBasePath, channelList, userList, uploadTeamId);
+                            }
                         }
                     }
                 } else {
@@ -280,9 +343,9 @@ namespace SlackToTeams.Services {
             } else {
                 Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine();
-                Console.WriteLine("================================");
-                Console.WriteLine(" Warning could not load config");
-                Console.WriteLine("================================");
+                Console.WriteLine("===========================================");
+                Console.WriteLine("       Warning could not load config       ");
+                Console.WriteLine("===========================================");
                 Console.WriteLine();
                 Console.ResetColor();
             }
@@ -452,22 +515,24 @@ namespace SlackToTeams.Services {
 
         #region Method - ScanAndHandleUsers
 
-        private async Task<List<SlackUser>> ScanAndHandleUsers(GraphHelper graphHelper, string slackArchiveBasePath, bool loadUserListInstead) {
+        private async Task<List<SlackUser>> ScanAndHandleUsers(GraphHelper? graphHelper, string slackArchiveBasePath, bool loadUserListInstead) {
             _logger.LogDebug("ScanAndHandleUsers - Start");
             async Task PopulateTeamUsers(List<SlackUser> users) {
-                try {
-                    await UsersHelper.PopulateTeamsUsers(graphHelper, users);
-                } catch (Exception ex) {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("Error getting team users!");
-                    if (ex.InnerException != null) {
-                        Console.WriteLine(ex.InnerException.Message);
-                    } else {
-                        Console.WriteLine(ex.Message);
+                if (graphHelper != null) {
+                    try {
+                        await UsersHelper.PopulateTeamsUsers(graphHelper, users);
+                    } catch (Exception ex) {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Error getting team users!");
+                        if (ex.InnerException != null) {
+                            Console.WriteLine(ex.InnerException.Message);
+                        } else {
+                            Console.WriteLine(ex.Message);
+                        }
+                        Console.ResetColor();
+                        _logger.LogError(ex, "ScanAndHandleUsers - Error team users export path:{slackArchiveBasePath} loadUserList:{loadUserListInstead} error:{errorMessage}", slackArchiveBasePath, loadUserListInstead, ex.Message);
+                        Environment.Exit(1);
                     }
-                    Console.ResetColor();
-                    _logger.LogError(ex, "ScanAndHandleUsers - Error team users export path:{slackArchiveBasePath} loadUserList:{loadUserListInstead} error:{errorMessage}", slackArchiveBasePath, loadUserListInstead, ex.Message);
-                    Environment.Exit(1);
                 }
             }
 
@@ -508,7 +573,10 @@ namespace SlackToTeams.Services {
                 Console.ResetColor();
 
                 List<SlackUser> users = UsersHelper.LoadUserList();
-                await AskToPopulateTeamIDs(users);
+
+                if (graphHelper != null) {
+                    await AskToPopulateTeamIDs(users);
+                }
 
                 _logger.LogDebug("ScanAndHandleUsers - End - userCount:{userCount}", (users != null ? users.Count : 0));
                 return (List<SlackUser>?)users ?? [];
@@ -520,7 +588,9 @@ namespace SlackToTeams.Services {
             // Scan users from the JSON and get team IDs for the respective users based on their email
             // Then store it locally in the userList
             List<SlackUser> userList = UsersHelper.ScanUsersFromSlack(slackUsersPath);
-            await PopulateTeamUsers(userList);
+            if (graphHelper != null) {
+                await PopulateTeamUsers(userList);
+            }
             UsersHelper.StoreUserList(userList);
 
             // Ask user if he wants to reload it so he can make changes to it
@@ -546,8 +616,10 @@ namespace SlackToTeams.Services {
                 Console.WriteLine("The User List has been reloaded!");
                 Console.ResetColor();
 
-                // Now ask to repopulate team IDs based on emails in the userList
-                await AskToPopulateTeamIDs(users);
+                if (graphHelper != null) {
+                    // Now ask to repopulate team IDs based on emails in the userList
+                    await AskToPopulateTeamIDs(users);
+                }
 
                 _logger.LogDebug("ScanAndHandleUsers - End - userCount:{userCount}", (users != null ? users.Count : 0));
                 return (List<SlackUser>?)users ?? [];
@@ -568,18 +640,22 @@ namespace SlackToTeams.Services {
 
         #region Method - ScanAndHandleMessages
 
-        private async Task ScanAndHandleMessages(SlackTeam team, GraphHelper graphHelper, string slackArchiveBasePath, List<SlackChannel> channelList, List<SlackUser> userList, string teamId) {
+        private async Task ScanAndHandleMessages(SlackTeam team, GraphHelper? graphHelper, string slackArchiveBasePath, List<SlackChannel> channelList, List<SlackUser> userList, ExportMode exportMode) {
             _logger.LogDebug("ScanAndHandleMessages - Start");
 
             foreach (var channel in channelList) {
                 if (channel != null) {
-                    // Create migration channel
-                    string? channelId = await CreateChannel(graphHelper, teamId, channel);
+                    string? channelId = null;
 
+                    // Create migration channel if able
                     if (
-                        !string.IsNullOrEmpty(channelId) &&
-                        !string.IsNullOrEmpty(channel.SlackFolder)
+                        graphHelper != null &&
+                        !string.IsNullOrEmpty(team.TeamId)
                     ) {
+                        channelId = await CreateChannel(graphHelper, team.TeamId, channel);
+                    }
+
+                    if (!string.IsNullOrEmpty(channel.SlackFolder)) {
                         string slackChannelFilesPath = Path.Combine(slackArchiveBasePath, channel.SlackFolder);
                         string channelDownloadFolder = $"files/{ConvertHelper.FileSystemSafe(team.DisplayName)}/{channel.SlackFolder}";
                         string chanelHtmlFolder = $"html/{ConvertHelper.FileSystemSafe(team.DisplayName)}/{channel.SlackFolder}";
@@ -597,7 +673,12 @@ namespace SlackToTeams.Services {
                                 channelFiles != null &&
                                 channelFiles.Length > 0
                             ) {
-                                HtmlHelper.StartHtml(chanelHtmlFolder);
+                                if (
+                                    exportMode == ExportMode.TeamsHtml ||
+                                    exportMode == ExportMode.Html
+                                ) {
+                                    HtmlHelper.StartHtml(chanelHtmlFolder);
+                                }
 
                                 foreach (var file in channelFiles) {
                                     _logger.LogDebug("Processing file:{file}", file);
@@ -621,17 +702,29 @@ namespace SlackToTeams.Services {
                                                 }
                                             }
 
-                                            ChatMessage? chatMessage;
-                                            if (message.IsInThread && !message.IsParentThread) {
-                                                _logger.LogDebug("Processing message as a thread. Parent Sent:{threadDate} Sent:{dateTime} From:{from}", message.ThreadDate, message.Date, message.User?.DisplayName);
-                                                chatMessage = await SendMessageToThread(graphHelper, teamId, channelId, message);
-                                            } else {
-                                                _logger.LogDebug("Processing message. Sent:{dateTime} From:{from}", message.Date, message.User?.DisplayName);
-                                                chatMessage = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
+                                            ChatMessage? chatMessage = null;
+                                            if (
+                                                graphHelper != null &&
+                                                !string.IsNullOrEmpty(team.TeamId) &&
+                                                !string.IsNullOrEmpty(channelId)
+                                            ) {
+                                                if (message.IsInThread && !message.IsParentThread) {
+                                                    _logger.LogDebug("Processing message as a thread. Parent Sent:{threadDate} Sent:{dateTime} From:{from}", message.ThreadDate, message.Date, message.User?.DisplayName);
+                                                    chatMessage = await SendMessageToThread(graphHelper, team.TeamId, channelId, message);
+                                                } else {
+                                                    _logger.LogDebug("Processing message. Sent:{dateTime} From:{from}", message.Date, message.User?.DisplayName);
+                                                    chatMessage = await SendMessageToTeamChannel(graphHelper, team.TeamId, channelId, message);
+                                                }
                                             }
 
-                                            // Only export the message to html if the send suceeds
-                                            if (chatMessage != null) {
+                                            // Only export the message to html if
+                                            //  - send suceeds and exportMode == ExportMode.TeamsHtml
+                                            //  OR
+                                            //  - exportMode == ExportMode.Html
+                                            if (
+                                                (chatMessage != null && exportMode == ExportMode.TeamsHtml) ||
+                                                exportMode == ExportMode.Html
+                                            ) {
                                                 HtmlHelper.MessageToHtml(chanelHtmlFolder, message);
                                             }
                                         }
@@ -649,7 +742,12 @@ namespace SlackToTeams.Services {
                                     }
                                 }
 
-                                HtmlHelper.EndHtml(chanelHtmlFolder);
+                                if (
+                                    exportMode == ExportMode.TeamsHtml ||
+                                    exportMode == ExportMode.Html
+                                ) {
+                                    HtmlHelper.EndHtml(chanelHtmlFolder);
+                                }
                             }
                         } else {
                             Console.ForegroundColor = ConsoleColor.Red;
@@ -658,10 +756,20 @@ namespace SlackToTeams.Services {
                             _logger.LogWarning("FolderName folder does not exist :{slackChannelFilesPath}", slackChannelFilesPath);
                         }
                     } else {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine($"Cannot find ID for - teamID:{teamId}: channel:{channel.DisplayName}:");
-                        Console.ResetColor();
-                        _logger.LogWarning("FolderName details invalid ID[{channelId}] folder:{slackFolder}", channelId, channel.SlackFolder);
+                        if (
+                            graphHelper != null &&
+                            !string.IsNullOrEmpty(team.TeamId)
+                        ) {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"Cannot find ID for - teamID:{team.TeamId}: channel:{channel.DisplayName}:");
+                            Console.ResetColor();
+                            _logger.LogWarning("FolderName details invalid ID[{channelId}] folder:{slackFolder}", channelId, channel.SlackFolder);
+                        } else {
+                            Console.ForegroundColor = ConsoleColor.Red;
+                            Console.WriteLine($"Channel folder:{channel.SlackFolder} invalid channel:{channel.DisplayName}");
+                            Console.ResetColor();
+                            _logger.LogWarning("FolderName details invalid folder:{slackFolder}", channel.SlackFolder);
+                        }
                     }
                 }
             }

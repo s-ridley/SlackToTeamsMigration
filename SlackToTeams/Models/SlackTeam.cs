@@ -25,6 +25,8 @@ namespace SlackToTeams.Models {
         [DataMember(IsRequired = false, Name = "template@odata.bind"), JsonProperty]
         public string Template { get; private set; } = "https://graph.microsoft.com/v1.0/teamsTemplates('standard')";
 
+        public string? TeamId { get; set; }
+
         #endregion
         #region Constructors
 
