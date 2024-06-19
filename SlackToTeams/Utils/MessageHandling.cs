@@ -198,7 +198,7 @@ namespace SlackToTeams.Utils {
                         SlackUser userFound = UsersHelper.FindUser(userList, userID);
 
                         if (userFound != null) {
-                            if (!string.IsNullOrWhiteSpace(userFound.TeamsUserID)) {
+                            if (!string.IsNullOrWhiteSpace(userFound.TeamsUserId)) {
                                 mentions ??= [];
                                 mentions.Add(userFound);
                                 messageText = $"<at id=\"{mentions.Count}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at> has joined the channel";
@@ -344,7 +344,7 @@ namespace SlackToTeams.Utils {
                         SlackUser userFound = UsersHelper.FindUser(userList, userID);
 
                         if (userFound != null) {
-                            if (!string.IsNullOrWhiteSpace(userFound.TeamsUserID)) {
+                            if (!string.IsNullOrWhiteSpace(userFound.TeamsUserId)) {
                                 mentions ??= [];
                                 mentions.Add(userFound);
                                 _ = formattedText.Append($"<at id=\"{mentions.Count}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at>");
@@ -423,7 +423,7 @@ namespace SlackToTeams.Utils {
                 if (userId == SlackUser.SLACK_BOT_ID) {
                     return SlackUser.SLACK_BOT;
                 } else {
-                    return userList.FirstOrDefault(user => user.SlackUserID == userId);
+                    return userList.FirstOrDefault(user => user.SlackUserId == userId);
                 }
             } else {
                 return SlackUser.BotUser(botId, username);

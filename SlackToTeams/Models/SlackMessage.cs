@@ -19,8 +19,8 @@ namespace SlackToTeams.Models {
         public List<SlackUser>? Mentions { get; set; }
         public List<SlackReaction>? Reactions { get; set; }
         public List<SlackHostedContent>? HostedContents { get; set; }
-        // Team Message IDs are the Timestamps first 13 digits
-        public string? TeamID => ThreadDate?.Replace(".", "")[..13] ?? Date.Replace(".", "")[..13];
+        // Message IDs are the Timestamps first 13 digits
+        public string? ThreadId => ThreadDate?.Replace(".", "")[..13] ?? Date.Replace(".", "")[..13];
 
         #endregion
         #region Constructors
@@ -127,7 +127,7 @@ namespace SlackToTeams.Models {
             ) {
                 foreach (var reaction in Reactions) {
                     if (reaction.User != null) {
-                        if (!string.IsNullOrWhiteSpace(reaction.User.TeamsUserID)) {
+                        if (!string.IsNullOrWhiteSpace(reaction.User.TeamsUserId)) {
                             Mentions ??= [];
                             Mentions.Add(reaction.User);
                             _ = formattedText.Append($"{reaction.Emoji} <at id=\"{Mentions.Count}\">{reaction.User.DisplayName}</at><br>");

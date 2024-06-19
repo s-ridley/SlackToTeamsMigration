@@ -623,10 +623,10 @@ namespace SlackToTeams.Services {
 
                                             ChatMessage? chatMessage;
                                             if (message.IsInThread && !message.IsParentThread) {
-                                                _logger.LogDebug("Processing message as in thread sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
-                                                chatMessage = await SendMessageToChannelThread(graphHelper, teamId, channelId, message);
+                                                _logger.LogDebug("Processing message as a thread. Parent Sent:{threadDate} Sent:{dateTime} From:{from}", message.ThreadDate, message.Date, message.User?.DisplayName);
+                                                chatMessage = await SendMessageToThread(graphHelper, teamId, channelId, message);
                                             } else {
-                                                _logger.LogDebug("Processing message sent:{dateTime} from:{from}", message.Date, message.User?.DisplayName);
+                                                _logger.LogDebug("Processing message. Sent:{dateTime} From:{from}", message.Date, message.User?.DisplayName);
                                                 chatMessage = await SendMessageToTeamChannel(graphHelper, teamId, channelId, message);
                                             }
 
@@ -665,6 +665,8 @@ namespace SlackToTeams.Services {
                     }
                 }
             }
+
+            _logger.LogDebug("ScanAndHandleMessages - End");
         }
 
         #endregion
@@ -680,15 +682,15 @@ namespace SlackToTeams.Services {
                 await graphHelper.CompleteChannelMigrationAsync(teamId, channelId);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error finishing migration of channel TeamID[{teamId}] channelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}[");
+                Console.WriteLine($"Error finishing migration of channel ThreadId[{teamId}] channelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}[");
                 Console.ResetColor();
-                _logger.LogError(odataError, "CompleteChannelMigrationAsync - Error finishing migration of channel - TeamID[{teamId}] channelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "CompleteChannelMigrationAsync - Error finishing migration of channel - ThreadId[{teamId}] channelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error finishing migration of channel: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "CompleteChannelMigrationAsync - Error finishing migration of channel - TeamID[{teamId}] channelID[{channelId}] error:{errorMessage}", teamId, channelId, ex.Message);
+                _logger.LogError(ex, "CompleteChannelMigrationAsync - Error finishing migration of channel - ThreadId[{teamId}] channelID[{channelId}] error:{errorMessage}", teamId, channelId, ex.Message);
                 Environment.Exit(1);
             }
 
@@ -709,13 +711,13 @@ namespace SlackToTeams.Services {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error finishing migration of team[{teamId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "CompleteTeamMigrationAsync - Error finishing migration of team - TeamID[{teamId}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "CompleteTeamMigrationAsync - Error finishing migration of team - ThreadId[{teamId}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error finishing migration of team: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "CompleteTeamMigrationAsync - Error finishing migration of team - TeamID[{teamId}] error:{errorMessage}", teamId, ex.Message);
+                _logger.LogError(ex, "CompleteTeamMigrationAsync - Error finishing migration of team - ThreadId[{teamId}] error:{errorMessage}", teamId, ex.Message);
                 Environment.Exit(1);
             }
 
@@ -738,13 +740,13 @@ namespace SlackToTeams.Services {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error assigning owner to team[{teamId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "AssignTeamOwnerAsync - Error assigning owner to team - TeamID[{teamId}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "AssignTeamOwnerAsync - Error assigning owner to team - ThreadId[{teamId}] code:{errorCode} message:{errorMessage}", teamId, odataError?.Error?.Code, odataError?.Error?.Message);
                 Environment.Exit(1);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error finishing migration of team: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "AssignTeamOwnerAsync - Error assigning owner to team - TeamID[{teamId}] error:{errorMessage}", teamId, ex.Message);
+                _logger.LogError(ex, "AssignTeamOwnerAsync - Error assigning owner to team - ThreadId[{teamId}] error:{errorMessage}", teamId, ex.Message);
                 Environment.Exit(1);
             }
 
@@ -1092,34 +1094,38 @@ namespace SlackToTeams.Services {
         #endregion
         #region Method - SendMessageToChannelThread
 
-        private async Task<ChatMessage?> SendMessageToChannelThread(GraphHelper graphHelper, string teamId, string channelId, SlackMessage message) {
-            _logger.LogDebug("SendMessageToChannelThread - Start");
+        private async Task<ChatMessage?> SendMessageToThread(GraphHelper graphHelper, string teamId, string channelId, SlackMessage message) {
+            _logger.LogDebug("SendMessageToThread - Start");
             try {
-                if (string.IsNullOrEmpty(message.TeamID)) {
+                if (string.IsNullOrEmpty(message.ThreadId)) {
                     return null;
                 }
-                return await graphHelper.SendMessageToChannelThreadAsync(teamId, channelId, message.TeamID, message);
+                return await graphHelper.SendMessageToChannelThreadAsync(teamId, channelId, message.ThreadId, message);
             } catch (ODataError odataError) {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
-                Console.ResetColor();
-                _logger.LogError(odataError, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 if (
                     odataError != null &&
                     odataError.Error != null &&
                     !string.IsNullOrEmpty(odataError.Error.Code) &&
                     !odataError.Error.Code.Equals("Conflict")
                 ) {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error sending message ThreadId[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
+                    Console.ResetColor();
+                    _logger.LogError(odataError, "SendMessageToThread - Error sending message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                     ContiuneAfterError();
+                } else {
+                    _logger.LogWarning(odataError, "SendMessageToThread - Could not send message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 }
                 return null;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "SendMessageToChannelThread - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
+                _logger.LogError(ex, "SendMessageToThread - Error sending message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
                 ContiuneAfterError();
                 return null;
+            } finally {
+                _logger.LogDebug("SendMessageToThread - End");
             }
         }
 
@@ -1131,26 +1137,30 @@ namespace SlackToTeams.Services {
             try {
                 return await graphHelper.SendMessageToChannelAsync(teamId, channelId, message);
             } catch (ODataError odataError) {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error sending message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
-                Console.ResetColor();
-                _logger.LogError(odataError, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 if (
                     odataError != null &&
                     odataError.Error != null &&
                     !string.IsNullOrEmpty(odataError.Error.Code) &&
                     !odataError.Error.Code.Equals("Conflict")
                 ) {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error sending message ThreadId[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
+                    Console.ResetColor();
+                    _logger.LogError(odataError, "SendMessageToTeamChannel - Error sending message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                     ContiuneAfterError();
+                } else {
+                    _logger.LogWarning(odataError, "SendMessageToTeamChannel - Could not send message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 }
                 return null;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "SendMessageToTeamChannel - Error sending message TeamID[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
+                _logger.LogError(ex, "SendMessageToTeamChannel - Error sending message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] error:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, ex.Message);
                 ContiuneAfterError();
                 return null;
+            } finally {
+                _logger.LogDebug("SendMessageToTeamChannel - End");
             }
         }
 
@@ -1163,14 +1173,14 @@ namespace SlackToTeams.Services {
                 await graphHelper.UploadFileToTeamChannelAsync(teamId, channelName, attachment);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error adding attachment to message TeamID[{teamId}] FolderName Name:{channelName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
+                Console.WriteLine($"Error adding attachment to message ThreadId[{teamId}] FolderName Name:{channelName} [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "Error adding attachment to message TeamID[{teamId}] FolderName Name:{channelName} code:{errorCode} message:{errorMessage}", teamId, channelName, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "Error adding attachment to message ThreadId[{teamId}] FolderName Name:{channelName} code:{errorCode} message:{errorMessage}", teamId, channelName, odataError?.Error?.Code, odataError?.Error?.Message);
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error uploading file: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "UploadFileToPath - Error adding attachment to message TeamID[{teamId}] FolderName Name:{channelName} error:{errorMessage}", teamId, channelName, ex.Message);
+                _logger.LogError(ex, "UploadFileToPath - Error adding attachment to message ThreadId[{teamId}] FolderName Name:{channelName} error:{errorMessage}", teamId, channelName, ex.Message);
             }
         }
 
@@ -1183,15 +1193,15 @@ namespace SlackToTeams.Services {
                 await graphHelper.AddAttachmentsToMessageAsync(teamId, channelId, message);
             } catch (ODataError odataError) {
                 Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"Error adding attachment to message TeamID[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
+                Console.WriteLine($"Error adding attachment to message ThreadId[{teamId}] ChannelID[{channelId}] [{odataError?.Error?.Code} / {odataError?.Error?.Message}]");
                 Console.ResetColor();
-                _logger.LogError(odataError, "Error adding attachment to message TeamID[{teamId}] ChannelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
+                _logger.LogError(odataError, "Error adding attachment to message ThreadId[{teamId}] ChannelID[{channelId}] code:{errorCode} message:{errorMessage}", teamId, channelId, odataError?.Error?.Code, odataError?.Error?.Message);
                 throw;
             } catch (Exception ex) {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"Error adding attachment to message: {ex.Message}");
                 Console.ResetColor();
-                _logger.LogError(ex, "AddAttachmentsToMessage - Error adding attachment to message TeamID[{teamId}] ChannelID[{channelId}] error:{errorMessage}", teamId, channelId, ex.Message);
+                _logger.LogError(ex, "AddAttachmentsToMessage - Error adding attachment to message ThreadId[{teamId}] ChannelID[{channelId}] error:{errorMessage}", teamId, channelId, ex.Message);
             }
         }
 

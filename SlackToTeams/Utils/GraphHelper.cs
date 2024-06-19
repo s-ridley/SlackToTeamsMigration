@@ -276,7 +276,7 @@ namespace SlackToTeams.Utils {
                 }
 
                 if (string.IsNullOrEmpty(channelId)) {
-                    throw new Exception($"CreateChannelAsync - channelID is null - channel:{channel}:");
+                    throw new Exception($"CreateChannelAsync - channelId is null - channel:{channel}:");
                 }
             }
 
@@ -413,21 +413,21 @@ namespace SlackToTeams.Utils {
 
         #region Method - SendMessageToChannelThreadAsync
 
-        public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamID, string channelID, string threadID, SlackMessage message) {
+        public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamId, string channelId, string threadId, SlackMessage message) {
             var msg = message.ToChatMessage();
 
             // Send the message
-            return await GraphClient.Teams[teamID].Channels[channelID].Messages[threadID].Replies.PostAsync(msg);
+            return await GraphClient.Teams[teamId].Channels[channelId].Messages[threadId].Replies.PostAsync(msg);
         }
 
         #endregion
         #region Method - SendMessageToChannelAsync
 
-        public async Task<ChatMessage?> SendMessageToChannelAsync(string teamID, string channelID, SlackMessage message) {
+        public async Task<ChatMessage?> SendMessageToChannelAsync(string teamId, string channelId, SlackMessage message) {
             var msg = message.ToChatMessage();
 
             // Send the message
-            return await GraphClient.Teams[teamID].Channels[channelID].Messages.PostAsync(msg);
+            return await GraphClient.Teams[teamId].Channels[channelId].Messages.PostAsync(msg);
         }
 
         #endregion
@@ -522,7 +522,7 @@ namespace SlackToTeams.Utils {
                     Console.WriteLine($"Error uploading: {ex}");
                 }
             } else {
-                s_logger.Warning("Failed to find root drive for team:{teamID}:", teamID);
+                s_logger.Warning("Failed to find root drive for team:{teamId}:", teamID);
                 Console.WriteLine($"Failed to find root drive for team:{teamID}:");
             }
         }
@@ -551,7 +551,7 @@ namespace SlackToTeams.Utils {
                     Attachments = attachments,
                 };
 
-                _ = await UserGraphClient.Teams[teamID].Channels[channelID].Messages[message.TeamID].Replies.PostAsync(msg);
+                _ = await UserGraphClient.Teams[teamID].Channels[channelID].Messages[message.ThreadId].Replies.PostAsync(msg);
             }
         }
 

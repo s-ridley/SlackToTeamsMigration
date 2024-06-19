@@ -22,8 +22,8 @@ namespace SlackToTeams.Models {
 
         public string DisplayName { get; private set; }
         public string? Email { get; private set; }
-        public string SlackUserID { get; private set; }
-        public string TeamsUserID { get; private set; }
+        public string SlackUserId { get; private set; }
+        public string TeamsUserId { get; private set; }
         public bool IsBot { get; set; } = false;
 
         #endregion
@@ -31,8 +31,8 @@ namespace SlackToTeams.Models {
 
         [JsonConstructor]
         public SlackUser(string? slackUserID, string? teamsUserID, string? displayName, string? email, bool isBot) {
-            SlackUserID = slackUserID ?? SLACK_BOT_ID;
-            TeamsUserID = teamsUserID ?? string.Empty;
+            SlackUserId = slackUserID ?? SLACK_BOT_ID;
+            TeamsUserId = teamsUserID ?? string.Empty;
             DisplayName = displayName ?? UNKNOWN_NAME;
             Email = email;
             IsBot = isBot;
@@ -52,7 +52,7 @@ namespace SlackToTeams.Models {
         #region Method - SetTeamUserID
 
         public void SetTeamUserID(string? id) {
-            TeamsUserID = id ?? string.Empty;
+            TeamsUserId = id ?? string.Empty;
         }
 
         #endregion
@@ -72,7 +72,7 @@ namespace SlackToTeams.Models {
         public ChatMessageFromIdentitySet? ToChatMessageFromIdentitySet() {
             return new ChatMessageFromIdentitySet {
                 User = new Identity {
-                    Id = TeamsUserID ?? null,
+                    Id = TeamsUserId ?? null,
                     DisplayName = DisplayName ?? UNKNOWN_NAME
                 }
             };
@@ -84,7 +84,7 @@ namespace SlackToTeams.Models {
         public ChatMessageMentionedIdentitySet ToChatMessageMentionedIdentitySet() {
             return new ChatMessageMentionedIdentitySet {
                 User = new Identity {
-                    Id = TeamsUserID ?? null,
+                    Id = TeamsUserId ?? null,
                     DisplayName = DisplayName ?? UNKNOWN_NAME
                 }
             };
@@ -96,7 +96,7 @@ namespace SlackToTeams.Models {
         public ChatMessageReactionIdentitySet ToChatMessageReactionIdentitySet() {
             return new ChatMessageReactionIdentitySet {
                 User = new Identity {
-                    Id = TeamsUserID ?? null,
+                    Id = TeamsUserId ?? null,
                     DisplayName = DisplayName ?? UNKNOWN_NAME
                 }
             };

@@ -153,7 +153,7 @@ namespace SlackToTeams.Utils {
 
         public static SlackUser FindUser(List<SlackUser> userList, string userID) {
             if (userID != SlackUser.SLACK_BOT_ID) {
-                var simpleUser = userList.FirstOrDefault(user => user.SlackUserID == userID);
+                var simpleUser = userList.FirstOrDefault(user => user.SlackUserId == userID);
                 if (simpleUser != null) {
                     return simpleUser;
                 }
