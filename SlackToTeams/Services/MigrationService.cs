@@ -1114,7 +1114,7 @@ namespace SlackToTeams.Services {
                     _logger.LogError(odataError, "SendMessageToThread - Error sending message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                     ContiuneAfterError();
                 } else {
-                    _logger.LogWarning(odataError, "SendMessageToThread - Could not send message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
+                    _logger.LogInformation(odataError, "SendMessageToThread - Could not send message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 }
                 return null;
             } catch (Exception ex) {
@@ -1149,7 +1149,7 @@ namespace SlackToTeams.Services {
                     _logger.LogError(odataError, "SendMessageToTeamChannel - Error sending message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                     ContiuneAfterError();
                 } else {
-                    _logger.LogWarning(odataError, "SendMessageToTeamChannel - Could not send message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
+                    _logger.LogInformation(odataError, "SendMessageToTeamChannel - Could not send message ThreadId[{teamId}] ChannelID[{channelId}] Date[{date}] From[{from}] code:{errorCode} message:{errorMessage}", teamId, channelId, message.Date, message.User?.DisplayName, odataError?.Error?.Code, odataError?.Error?.Message);
                 }
                 return null;
             } catch (Exception ex) {
