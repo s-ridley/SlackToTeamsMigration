@@ -140,8 +140,8 @@ namespace SlackToTeams.Utils {
                     !string.IsNullOrEmpty(htmlFilePath) &&
                     File.Exists(htmlFilePath)
                 ) {
-                    File.AppendAllText(htmlFilePath, $"</html>{Environment.NewLine}");
                     File.AppendAllText(htmlFilePath, $"</body>{Environment.NewLine}");
+                    File.AppendAllText(htmlFilePath, $"</html>{Environment.NewLine}");
 
                     s_logger.Debug($"Started HTML export file:{htmlFilePath}");
                 }
