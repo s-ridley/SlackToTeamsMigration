@@ -29,6 +29,34 @@ namespace SlackToTeams.Utils {
                     ) {
                         File.WriteAllText(htmlFilePath, $"<!DOCTYPE html>{Environment.NewLine}");
                         File.AppendAllText(htmlFilePath, $"<html>{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"<head>{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"<style>{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"html {{{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    font-family: Arial, Helvetica, sans-serif;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"blockquote {{{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    margin: 0;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    padding: 5px;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    background: #eee;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    border-radius: 5px;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    border-style: solid ;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    border-width: 1px;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"hr {{{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    border-top: 1px solid #c0c0c0;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"#user_id {{{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    font-weight: bold;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"#epoch_time {{{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    font-weight: lighter;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"#message_text {{{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    font-weight: normal;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"    white-space: pre-wrap;{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"</style>{Environment.NewLine}");
+                        File.AppendAllText(htmlFilePath, $"</head>{Environment.NewLine}");
                         File.AppendAllText(htmlFilePath, $"<body>{Environment.NewLine}");
 
                         s_logger.Debug($"Started HTML export file:{htmlFilePath}");
@@ -92,10 +120,10 @@ namespace SlackToTeams.Utils {
                     htmlBody = htmlBody.Replace(Environment.NewLine, "<br>");
 
                     File.AppendAllText(htmlFilePath, $"<div>{Environment.NewLine}");
-                    File.AppendAllText(htmlFilePath, $"<span id=\"user_id\" style=\"font-weight:bold;\">{message.User?.DisplayName}</span>");
+                    File.AppendAllText(htmlFilePath, $"<span id=\"user_id\">{message.User?.DisplayName}</span>");
                     File.AppendAllText(htmlFilePath, $"&nbsp;");
-                    File.AppendAllText(htmlFilePath, $"<span id=\"epoch_time\" style=\"font-weight:lighter;\">{ConvertHelper.SlackTimestampToDateTimeOffset(message.Date).DateTime:G}</span>{Environment.NewLine}");
-                    File.AppendAllText(htmlFilePath, $"<div id=\"message_text\" style=\"font-weight:normal;white-space:pre-wrap;\">{htmlBody}</div>{Environment.NewLine}");
+                    File.AppendAllText(htmlFilePath, $"<span id=\"epoch_time\">{ConvertHelper.SlackTimestampToDateTimeOffset(message.Date).DateTime:G}</span>{Environment.NewLine}");
+                    File.AppendAllText(htmlFilePath, $"<div id=\"message_text\">{htmlBody}</div>{Environment.NewLine}");
                     File.AppendAllText(htmlFilePath, $"</div>{Environment.NewLine}");
                     File.AppendAllText(htmlFilePath, $"<hr>{Environment.NewLine}");
                 }
