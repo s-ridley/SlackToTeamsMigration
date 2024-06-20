@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -734,17 +733,17 @@ namespace SlackToTeams.Services {
                                                     )
                                                 ) {
                                                     HtmlHelper.StartHtml(chanelHtmlFolder, currentHtmlYearMonth);
-                                                }
 
-                                                // Check if there is a previous Month to end
-                                                if (
-                                                    !string.IsNullOrWhiteSpace(previousHtmlYearMonth) &&
-                                                    (
-                                                        exportMode == ExportMode.TeamsHtml ||
-                                                        exportMode == ExportMode.Html
-                                                    )
-                                                ) {
-                                                    HtmlHelper.EndHtml(chanelHtmlFolder, previousHtmlYearMonth);
+                                                    // Check if there is a previous Month to end
+                                                    if (
+                                                        !string.IsNullOrWhiteSpace(previousHtmlYearMonth) &&
+                                                        (
+                                                            exportMode == ExportMode.TeamsHtml ||
+                                                            exportMode == ExportMode.Html
+                                                        )
+                                                    ) {
+                                                        HtmlHelper.EndHtml(chanelHtmlFolder, previousHtmlYearMonth);
+                                                    }
                                                 }
                                             }
 
@@ -794,16 +793,6 @@ namespace SlackToTeams.Services {
                                             CheckShouldStop();
                                         }
                                     }
-                                    // Check if there is a previous html export to end
-                                    if (
-                                        !string.IsNullOrWhiteSpace(previousHtmlYearMonth) &&
-                                        (
-                                            exportMode == ExportMode.TeamsHtml ||
-                                            exportMode == ExportMode.Html
-                                        )
-                                    ) {
-                                        HtmlHelper.EndHtml(chanelHtmlFolder, previousHtmlYearMonth);
-                                    }
                                     try {
                                         // Rename the file so it will not be processed again
                                         File.Move(file, Path.ChangeExtension(file, ".old"));
@@ -816,6 +805,17 @@ namespace SlackToTeams.Services {
                                         Environment.Exit(1);
                                     }
                                     CheckShouldStop();
+                                }
+
+                                // Check if there is a previous html export to end
+                                if (
+                                    !string.IsNullOrWhiteSpace(previousHtmlYearMonth) &&
+                                    (
+                                        exportMode == ExportMode.TeamsHtml ||
+                                        exportMode == ExportMode.Html
+                                    )
+                                ) {
+                                    HtmlHelper.EndHtml(chanelHtmlFolder, previousHtmlYearMonth);
                                 }
                                 CheckShouldStop();
                             }

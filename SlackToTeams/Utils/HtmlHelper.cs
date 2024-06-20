@@ -140,7 +140,8 @@ hr {
                     !string.IsNullOrEmpty(htmlFilePath) &&
                     File.Exists(htmlFilePath)
                 ) {
-                    File.AppendAllText(htmlFilePath, @"</body>
+                    File.AppendAllText(htmlFilePath, @"
+</body>
 </html>");
 
                     s_logger.Debug($"Started HTML export file:{htmlFilePath}");
