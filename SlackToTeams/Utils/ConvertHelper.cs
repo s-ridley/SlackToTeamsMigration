@@ -182,6 +182,8 @@ namespace SlackToTeams.Utils {
                         "robot_face" => Emoji.Robot,
                         "rip" => Emoji.Headstone,
                         "scream" => Emoji.FaceScreamingInFear,
+                        "siren" => Emoji.PoliceCarLight,
+                        "six_pointed_star" => Emoji.StarOfDavid,
                         "sob" => Emoji.LoudlyCryingFace,
                         "slick" => Emoji.SmilingFaceWithSunglasses,
                         "smile" or "simple_smile" or "smiley" => Emoji.SmilingFace,
