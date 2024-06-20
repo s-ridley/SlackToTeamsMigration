@@ -49,7 +49,7 @@ namespace SlackToTeams.Models {
             IsArchived = isArchived;
             SlackId = slackId;
             SlackCreatorId = slackCreatorId;
-            SlackFolder = ConvertHelper.FileSystemSafe(displayName);
+            SlackFolder = displayName;
         }
 
         #endregion

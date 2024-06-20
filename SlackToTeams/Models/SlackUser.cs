@@ -9,12 +9,14 @@ namespace SlackToTeams.Models {
         #region Fields
 
         public static readonly SlackUser SLACK_BOT = BotUser(SLACK_BOT_ID, SLACK_BOT_NAME);
+        public static readonly SlackUser UNKNOWN = BotUser(UNKNOWN_ID, UNKNOWN_NAME);
 
         #endregion
         #region Constants
 
         public const string SLACK_BOT_ID = "USLACKBOT";
         public const string SLACK_BOT_NAME = "Slack Bot";
+        public const string UNKNOWN_ID = "UNK";
         public const string UNKNOWN_NAME = "Unknown";
 
         #endregion

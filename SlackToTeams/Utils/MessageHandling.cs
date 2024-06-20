@@ -18,7 +18,7 @@ namespace SlackToTeams.Utils {
         #region Method - GetMessagesForDay
 
         public static IEnumerable<SlackMessage> GetMessagesForDay(string channel, string path, List<SlackChannel> channels, List<SlackUser> users) {
-            s_logger.Debug("Getting messaged for channel:{channel} from file:{path}", channel, path);
+            s_logger.Debug("Getting message for channel:{channel} from file:{path}", channel, path);
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"FolderName {channel} File {path}");
             Console.ResetColor();
@@ -32,83 +32,42 @@ namespace SlackToTeams.Utils {
                     if (reader.TokenType == JsonToken.StartObject) {
                         JObject obj = JObject.Load(reader);
 
-                        string? messageTS = obj.SelectToken("ts")?.ToString();
-
-                        if (string.IsNullOrEmpty(messageTS)) {
+                        // Make sure timestamp valid
+                        string? messageTs = obj.SelectToken("ts")?.ToString();
+                        if (string.IsNullOrEmpty(messageTs)) {
                             Console.ForegroundColor = ConsoleColor.Red;
-                            Console.Error.WriteLine($"{messageTS} is not valid in");
+                            Console.Error.WriteLine($"{messageTs} is not valid in");
                             Console.Error.WriteLine($"{obj}");
                             Console.ResetColor();
                             Console.WriteLine();
                             continue;
                         }
 
-                        (string messageText, List<SlackUser>? mentions, List<SlackReaction>? reactions) = ProcessJson(obj, channels, users);
-
-                        SlackUser? messageSender = FindMessageSender(obj, users);
-
-                        string? threadTS = obj.SelectToken("thread_ts")?.ToString();
-                        // Make sure threadTS is valid
-                        if (!string.IsNullOrWhiteSpace(threadTS)) {
-                            // Remove the dot if required
-                            threadTS = threadTS.Replace(".", "");
-                            // Try and convert to long
-                            if (!long.TryParse(threadTS, out long threadMs) || threadMs <= 0) {
-                                // If that fails then threadTS is not valid so set to null
-                                threadTS = null;
-                            }
-                        }
-
-                        List<SlackAttachment>? attachments = GetFormattedAttachments(obj);
-
-                        List<SlackHostedContent>? hostedContents = null;
-
+                        // Check if message is deleted and stop processing if so
+                        string? subtype = obj.SelectToken("subtype")?.ToString();
                         if (
-                            attachments != null &&
-                            attachments.Count > 0
+                            !string.IsNullOrWhiteSpace(subtype) &&
+                            subtype.Equals("message_deleted", StringComparison.CurrentCultureIgnoreCase)
                         ) {
-                            var imageAttachments = attachments.Where(a => GraphHelper.ValidImageMimeType(a.MimeType));
-
-                            if (
-                                imageAttachments != null &&
-                                imageAttachments.Any()
-                            ) {
-                                if (GraphHelper.ValidHostedContent(imageAttachments)) {
-                                    // Remove image attachments from attachments result
-                                    attachments = attachments.Where(a => !GraphHelper.ValidImageMimeType(a.MimeType)).ToList();
-
-                                    // Process the image attachments as HostedContent
-                                    foreach (var attachment in imageAttachments) {
-                                        try {
-                                            // Check if the attachment is an image
-                                            // Download the file and convert to base64
-                                            attachment.DownloadBytes().Wait();
-                                            if (
-                                                attachment.ContentBytes != null &&
-                                                attachment.ContentBytes.Length > 0
-                                            ) {
-                                                // Add a SlackHostedContent object to the message
-                                                hostedContents ??= [];
-                                                hostedContents.Add(
-                                                    new SlackHostedContent(
-                                                        attachment.ContentBytes,
-                                                        attachment.MimeType,
-                                                        attachment.Height,
-                                                        attachment.Width
-                                                    )
-                                                );
-                                            }
-                                        } catch (Exception ex) {
-                                            Console.WriteLine(ex.Message);
-                                        }
-                                    }
-                                }
-                            }
+                            s_logger.Debug("message deleted channel:{channel} from file:{path} timestamp:{messageTs}", channel, path, messageTs);
+                            continue;
                         }
+
+                        (string messageText, List<SlackUser>? mentions) = ProcessJson(obj, channels, users);
+
+                        SlackUser? messageSender = GetMessageSender(obj, users);
+
+                        string? threadTS = GetThreadTimestmap(obj);
+
+                        List<SlackAttachment>? attachments = GetAttachments(obj);
+
+                        List<SlackReaction>? reactions = GetReactions(obj, users);
+
+                        (List<SlackHostedContent>? hostedContents, attachments) = GetHostedContent(attachments);
 
                         SlackMessage message = new(
                             messageSender,      // user
-                            messageTS,          // date
+                            messageTs,          // date
                             threadTS,           // threadDate
                             messageText,        // text
                             attachments,
@@ -129,14 +88,221 @@ namespace SlackToTeams.Utils {
         }
 
         #endregion
-        #region Method - GetFormattedText
+        #region Method - GetAttachments
 
-        static (string, List<SlackUser>?, List<SlackReaction>?) ProcessJson(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList) {
+        static List<SlackAttachment>? GetAttachments(JObject obj) {
+            var attachmentsArray = obj.SelectTokens("files[*]").ToList();
+
+            List<SlackAttachment>? attachments = null;
+
+            if (
+                attachmentsArray != null &&
+                attachmentsArray.Count > 0
+            ) {
+                attachments = [];
+                foreach (var attachment in attachmentsArray) {
+                    string? url = attachment.SelectToken("url_private_download")?.ToString();
+                    string? fileType = attachment.SelectToken("filetype")?.ToString();
+                    string? mimeType = attachment.SelectToken("mimetype")?.ToString();
+                    string? name = attachment.SelectToken("name")?.ToString();
+                    _ = int.TryParse(attachment.SelectToken("original_w")?.ToString(), out int width);
+                    _ = int.TryParse(attachment.SelectToken("original_h")?.ToString(), out int height);
+
+                    if (
+                        !string.IsNullOrWhiteSpace(url) &&
+                        !string.IsNullOrWhiteSpace(fileType) &&
+                        !string.IsNullOrWhiteSpace(mimeType) &&
+                        !string.IsNullOrWhiteSpace(name)
+                    ) {
+                        string? title = attachment.SelectToken("title")?.ToString();
+                        string? size = attachment.SelectToken("size")?.ToString();
+                        string? created = attachment.SelectToken("created")?.ToString();
+
+                        SlackAttachment slackAttachment = new(
+                            url,                                                    // slackUrl
+                            name,
+                            title,
+                            fileType,
+                            mimeType,
+                            Convert.ToInt64(size),                                  // size
+                            ConvertHelper.SlackTimestampToDateTimeOffset(created)   // date
+                        ) {
+                            Width = width,
+                            Height = height
+                        };
+
+                        attachments.Add(slackAttachment);
+                    }
+                }
+            }
+
+            return attachments;
+        }
+
+        #endregion
+        #region Method - GetHostedContent
+
+        static (List<SlackHostedContent>?, List<SlackAttachment>?) GetHostedContent(List<SlackAttachment>? attachments) {
+            List<SlackHostedContent>? hostedContents = null;
+            if (
+                attachments != null &&
+                attachments.Count > 0
+            ) {
+                var imageAttachments = attachments.Where(a => GraphHelper.ValidImageMimeType(a.MimeType));
+
+                if (
+                    imageAttachments != null &&
+                    imageAttachments.Any()
+                ) {
+                    if (GraphHelper.ValidHostedContent(imageAttachments)) {
+                        // Remove image attachments from attachments result
+                        attachments = attachments.Where(a => !GraphHelper.ValidImageMimeType(a.MimeType)).ToList();
+
+                        // Process the image attachments as HostedContent
+                        foreach (var attachment in imageAttachments) {
+                            try {
+                                // Check if the attachment is an image
+                                // Download the file and convert to base64
+                                attachment.DownloadBytes().Wait();
+                                if (
+                                    attachment.ContentBytes != null &&
+                                    attachment.ContentBytes.Length > 0
+                                ) {
+                                    // Add a SlackHostedContent object to the message
+                                    hostedContents ??= [];
+                                    hostedContents.Add(
+                                        new SlackHostedContent(
+                                            attachment.ContentBytes,
+                                            attachment.MimeType,
+                                            attachment.Height,
+                                            attachment.Width
+                                        )
+                                    );
+                                }
+                            } catch (Exception ex) {
+                                Console.WriteLine(ex.Message);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return (hostedContents, attachments);
+        }
+
+        #endregion
+        #region Method - GetMessageSender
+
+        static SlackUser? GetMessageSender(JObject obj, List<SlackUser> userList) {
+            string? userId = obj.SelectToken("user")?.ToString();
+            string? username = obj.SelectToken("username")?.ToString();
+            string? botId = obj.SelectToken("bot_id")?.ToString();
+
+            if (!string.IsNullOrEmpty(userId)) {
+                if (userId == SlackUser.SLACK_BOT_ID) {
+                    return SlackUser.SLACK_BOT;
+                } else {
+                    SlackUser? userFound = userList.FirstOrDefault(user => user.SlackUserId == userId);
+                    if (
+                        userFound != null &&
+                        !string.IsNullOrEmpty(userFound.DisplayName)
+                    ) {
+                        return userFound;
+                    } else {
+                        return SlackUser.UNKNOWN;
+                    }
+                }
+            } else {
+                return SlackUser.BotUser(botId, username);
+            }
+        }
+
+        #endregion
+        #region Method - GetNameFromChannelId
+
+        static string GetNameFromChannelId(List<SlackChannel> channelList, string channelId) {
+            if (!string.IsNullOrWhiteSpace(channelId)) {
+                var channel = channelList.FirstOrDefault(channel => channel.SlackId == channelId);
+                if (channel != null) {
+                    return channel.DisplayName;
+                }
+            }
+
+            return "Unknown FolderName";
+        }
+
+        #endregion
+        #region Method - GetReactions
+
+        static List<SlackReaction>? GetReactions(JObject obj, List<SlackUser> userList) {
+            var reactionsArray = obj.SelectTokens("reactions[*]").ToList();
+
+            List<SlackReaction>? reactions = null;
+
+            if (
+                reactionsArray != null &&
+                reactionsArray.Count > 0
+            ) {
+                foreach (JToken reaction in reactionsArray) {
+                    string? name = reaction.SelectToken("name")?.ToString();
+                    if (!string.IsNullOrWhiteSpace(name)) {
+                        var usersArray = reaction.SelectTokens("users[*]").ToList();
+                        if (
+                            usersArray != null &&
+                            usersArray.Count > 0
+                        ) {
+                            foreach (JToken user in usersArray) {
+                                string? userId = user.ToString();
+                                if (!string.IsNullOrWhiteSpace(userId)) {
+                                    SlackUser userFound = UsersHelper.FindUser(userList, userId);
+
+                                    if (userFound != null) {
+                                        reactions ??= [];
+                                        reactions.Add(
+                                            new SlackReaction(
+                                                null,       // createdDateTime
+                                                name,       // reactionType
+                                                userFound   // user
+                                            )
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return reactions;
+        }
+
+        #endregion
+        #region Method - GetThreadTimestmap
+
+        static string? GetThreadTimestmap(JObject obj) {
+            string? threadTs = obj.SelectToken("thread_ts")?.ToString();
+            // Make sure threadTs is valid
+            if (!string.IsNullOrWhiteSpace(threadTs)) {
+                // Remove the dot if required
+                threadTs = threadTs.Replace(".", "");
+                // Try and convert to long
+                if (!long.TryParse(threadTs, out long threadMs) || threadMs <= 0) {
+                    // If that fails then threadTs is not valid so set to null
+                    threadTs = null;
+                }
+            }
+            return threadTs;
+        }
+
+        #endregion
+        #region Method - ProcessJson
+
+        static (string, List<SlackUser>?) ProcessJson(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList) {
             string? subtype = obj.SelectToken("subtype")?.ToString();
-
             string messageText = string.Empty;
             List<SlackUser>? mentions = null;
-            List<SlackReaction>? reactions = null;
+
+            bool stopProcessing = false;
 
             if (!string.IsNullOrWhiteSpace(subtype)) {
                 switch (subtype) {
@@ -187,6 +353,7 @@ namespace SlackToTeams.Utils {
                         }
 
                         messageText = formattedText.ToString();
+                        stopProcessing = true;
                         break;
                     case "channel_join":
                         string? userID = obj.SelectToken("user")?.ToString();
@@ -208,11 +375,12 @@ namespace SlackToTeams.Utils {
                         } else {
                             messageText = HttpUtility.HtmlEncode("<Unknown User> has joined the channel");
                         }
+                        stopProcessing = true;
                         break;
                 }
             }
 
-            if (string.IsNullOrWhiteSpace(messageText)) {
+            if (!stopProcessing) {
                 // Check for rich text block
                 var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
 
@@ -222,7 +390,7 @@ namespace SlackToTeams.Utils {
                 ) {
                     // Process the rich text block
                     StringBuilder formattedText = new();
-                    mentions = FormatText(formattedText, richTextArray, channelList, userList, mentions);
+                    mentions = ProcessRichText(formattedText, richTextArray, channelList, userList, mentions);
                     messageText = formattedText.ToString();
                 } else {
                     // Simple text, get it directly from text field
@@ -238,48 +406,13 @@ namespace SlackToTeams.Utils {
                 }
             }
 
-            var reactionsArray = obj.SelectTokens("reactions[*]").ToList();
-            if (
-                reactionsArray != null &&
-                reactionsArray.Count > 0
-            ) {
-                foreach (JToken reaction in reactionsArray) {
-                    string? name = reaction.SelectToken("name")?.ToString();
-                    if (!string.IsNullOrWhiteSpace(name)) {
-                        var usersArray = reaction.SelectTokens("users[*]").ToList();
-                        if (
-                            usersArray != null &&
-                            usersArray.Count > 0
-                        ) {
-                            foreach (JToken user in usersArray) {
-                                string? userId = user.ToString();
-                                if (!string.IsNullOrWhiteSpace(userId)) {
-                                    SlackUser userFound = UsersHelper.FindUser(userList, userId);
-
-                                    if (userFound != null) {
-                                        reactions ??= [];
-                                        reactions.Add(
-                                            new SlackReaction(
-                                                null,       // createdDateTime
-                                                name,       // reactionType
-                                                userFound   // user
-                                            )
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            return (messageText, mentions, reactions);
+            return (messageText, mentions);
         }
 
         #endregion
-        #region Method - FormatText
+        #region Method - ProcessRichText
 
-        static List<SlackUser>? FormatText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList, List<SlackUser>? mentions) {
+        static List<SlackUser>? ProcessRichText(StringBuilder formattedText, List<JToken> tokens, List<SlackChannel> channelList, List<SlackUser> userList, List<SlackUser>? mentions) {
             string? text;
 
             foreach (JToken token in tokens) {
@@ -317,7 +450,7 @@ namespace SlackToTeams.Utils {
 
                         _ = formattedText.Append("<br> • ");
 
-                        mentions = FormatText(formattedText, subTokens, channelList, userList, mentions);
+                        mentions = ProcessRichText(formattedText, subTokens, channelList, userList, mentions);
                         break;
                     case "link":
                         string? link = token.SelectToken("url")?.ToString();
@@ -393,7 +526,7 @@ namespace SlackToTeams.Utils {
                             break;
                         }
 
-                        string channelName = DisplayNameFromChannelID(channelList, channelId);
+                        string channelName = GetNameFromChannelId(channelList, channelId);
 
                         _ = formattedText.Append($"@{channelName}");
                         break;
@@ -409,91 +542,6 @@ namespace SlackToTeams.Utils {
                 }
             }
             return mentions;
-        }
-
-        #endregion
-        #region Method - FindMessageSender
-
-        static SlackUser? FindMessageSender(JObject obj, List<SlackUser> userList) {
-            string? userId = obj.SelectToken("user")?.ToString();
-            string? username = obj.SelectToken("username")?.ToString();
-            string? botId = obj.SelectToken("bot_id")?.ToString();
-
-            if (!string.IsNullOrEmpty(userId)) {
-                if (userId == SlackUser.SLACK_BOT_ID) {
-                    return SlackUser.SLACK_BOT;
-                } else {
-                    return userList.FirstOrDefault(user => user.SlackUserId == userId);
-                }
-            } else {
-                return SlackUser.BotUser(botId, username);
-            }
-        }
-
-        #endregion
-        #region Method - DisplayNameFromChannelID
-
-        static string DisplayNameFromChannelID(List<SlackChannel> channelList, string channelId) {
-            if (!string.IsNullOrWhiteSpace(channelId)) {
-                var channel = channelList.FirstOrDefault(channel => channel.SlackId == channelId);
-                if (channel != null) {
-                    return channel.DisplayName;
-                }
-            }
-
-            return "Unknown FolderName";
-        }
-
-        #endregion
-        #region Method - GetFormattedAttachments
-
-        static List<SlackAttachment>? GetFormattedAttachments(JObject obj) {
-            var attachmentsArray = obj.SelectTokens("files[*]").ToList();
-
-            List<SlackAttachment>? formattedAttachments = null;
-
-            if (
-                attachmentsArray != null &&
-                attachmentsArray.Count > 0
-            ) {
-                formattedAttachments = [];
-                foreach (var attachment in attachmentsArray) {
-                    string? url = attachment.SelectToken("url_private_download")?.ToString();
-                    string? fileType = attachment.SelectToken("filetype")?.ToString();
-                    string? mimeType = attachment.SelectToken("mimetype")?.ToString();
-                    string? name = attachment.SelectToken("name")?.ToString();
-                    _ = int.TryParse(attachment.SelectToken("original_w")?.ToString(), out int width);
-                    _ = int.TryParse(attachment.SelectToken("original_h")?.ToString(), out int height);
-
-                    if (
-                        !string.IsNullOrWhiteSpace(url) &&
-                        !string.IsNullOrWhiteSpace(fileType) &&
-                        !string.IsNullOrWhiteSpace(mimeType) &&
-                        !string.IsNullOrWhiteSpace(name)
-                    ) {
-                        string? title = attachment.SelectToken("title")?.ToString();
-                        string? size = attachment.SelectToken("size")?.ToString();
-                        string? created = attachment.SelectToken("created")?.ToString();
-
-                        SlackAttachment slackAttachment = new(
-                            url,                                                    // slackUrl
-                            name,
-                            title,
-                            fileType,
-                            mimeType,
-                            Convert.ToInt64(size),                                  // size
-                            ConvertHelper.SlackTimestampToDateTimeOffset(created)   // date
-                        ) {
-                            Width = width,
-                            Height = height
-                        };
-
-                        formattedAttachments.Add(slackAttachment);
-                    }
-                }
-            }
-
-            return formattedAttachments;
         }
 
         #endregion

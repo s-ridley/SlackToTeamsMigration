@@ -809,13 +809,13 @@ namespace SlackToTeams.Services {
 
                                 // Check if there is a previous html export to end
                                 if (
-                                    !string.IsNullOrWhiteSpace(previousHtmlYearMonth) &&
+                                    !string.IsNullOrWhiteSpace(currentHtmlYearMonth) &&
                                     (
                                         exportMode == ExportMode.TeamsHtml ||
                                         exportMode == ExportMode.Html
                                     )
                                 ) {
-                                    HtmlHelper.EndHtml(chanelHtmlFolder, previousHtmlYearMonth);
+                                    HtmlHelper.EndHtml(chanelHtmlFolder, currentHtmlYearMonth);
                                 }
                                 CheckShouldStop();
                             }
