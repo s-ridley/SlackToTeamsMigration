@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using System.Numerics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Graph.Models;
 using Microsoft.Graph.Models.ODataErrors;
@@ -699,7 +700,7 @@ namespace SlackToTeams.Services {
                             Console.WriteLine($"Processing channel:{channel.DisplayName} folder:{slackChannelFilesPath}");
                             Console.ResetColor();
 
-                            _logger.LogDebug("Processing channel:{channelName} folder:{slackExportPath}", channel.DisplayName, slackChannelFilesPath);
+                            _logger.LogInformation("Processing channel:{channelName} folder:{slackExportPath}", channel.DisplayName, slackChannelFilesPath);
 
                             string[] channelFiles = Directory.GetFiles(slackChannelFilesPath, "*.json");
 
@@ -707,17 +708,46 @@ namespace SlackToTeams.Services {
                                 channelFiles != null &&
                                 channelFiles.Length > 0
                             ) {
-                                if (
-                                    exportMode == ExportMode.TeamsHtml ||
-                                    exportMode == ExportMode.Html
-                                ) {
-                                    HtmlHelper.StartHtml(chanelHtmlFolder);
-                                }
+                                string currentHtmlYearMonth = string.Empty;
+                                string previousHtmlYearMonth = string.Empty;
 
                                 foreach (var file in channelFiles) {
-                                    _logger.LogDebug("Processing file:{file}", file);
+                                    _logger.LogInformation("Processing file:{file}", file);
                                     foreach (var message in MessageHandling.GetMessagesForDay(channel.DisplayName, file, channelList, userList)) {
                                         if (message != null) {
+                                            DateTime messageDateTime = ConvertHelper.SlackTimestampToDateTime(message.Date);
+                                            string messageYearMonth = $"{messageDateTime:yyyy}{messageDateTime:MM}";
+                                            // Check if the 'messageYearMonth' is not the same as 'currentHtmlYearMonth'
+                                            if (!messageYearMonth.Equals(currentHtmlYearMonth)) {
+                                                // If so set the 'previousHtmlYearMonth' to 'currentHtmlYearMonth'
+                                                previousHtmlYearMonth = currentHtmlYearMonth;
+                                                // If so set the 'currentHtmlYearMonth' to 'messageYearMonth'
+                                                currentHtmlYearMonth = messageYearMonth;
+
+                                                // If the 
+                                                // If so then a new html file needs to be started
+                                                if (
+                                                    !currentHtmlYearMonth.Equals(previousHtmlYearMonth) &&
+                                                    (
+                                                        exportMode == ExportMode.TeamsHtml ||
+                                                        exportMode == ExportMode.Html
+                                                    )
+                                                ) {
+                                                    HtmlHelper.StartHtml(chanelHtmlFolder, currentHtmlYearMonth);
+                                                }
+
+                                                // Check if there is a previous Month to end
+                                                if (
+                                                    !string.IsNullOrWhiteSpace(previousHtmlYearMonth) &&
+                                                    (
+                                                        exportMode == ExportMode.TeamsHtml ||
+                                                        exportMode == ExportMode.Html
+                                                    )
+                                                ) {
+                                                    HtmlHelper.EndHtml(chanelHtmlFolder, previousHtmlYearMonth);
+                                                }
+                                            }
+
                                             if (
                                                 message.Attachments != null &&
                                                 message.Attachments.Count > 0
@@ -759,10 +789,20 @@ namespace SlackToTeams.Services {
                                                 (chatMessage != null && exportMode == ExportMode.TeamsHtml) ||
                                                 exportMode == ExportMode.Html
                                             ) {
-                                                HtmlHelper.MessageToHtml(chanelHtmlFolder, message);
+                                                HtmlHelper.MessageToHtml(chanelHtmlFolder, currentHtmlYearMonth, message);
                                             }
                                             CheckShouldStop();
                                         }
+                                    }
+                                    // Check if there is a previous html export to end
+                                    if (
+                                        !string.IsNullOrWhiteSpace(previousHtmlYearMonth) &&
+                                        (
+                                            exportMode == ExportMode.TeamsHtml ||
+                                            exportMode == ExportMode.Html
+                                        )
+                                    ) {
+                                        HtmlHelper.EndHtml(chanelHtmlFolder, previousHtmlYearMonth);
                                     }
                                     try {
                                         // Rename the file so it will not be processed again
@@ -776,13 +816,6 @@ namespace SlackToTeams.Services {
                                         Environment.Exit(1);
                                     }
                                     CheckShouldStop();
-                                }
-
-                                if (
-                                    exportMode == ExportMode.TeamsHtml ||
-                                    exportMode == ExportMode.Html
-                                ) {
-                                    HtmlHelper.EndHtml(chanelHtmlFolder);
                                 }
                                 CheckShouldStop();
                             }

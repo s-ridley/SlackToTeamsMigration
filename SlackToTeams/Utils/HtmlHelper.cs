@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using System.Text;
+using Serilog;
 using SlackToTeams.Models;
 
 namespace SlackToTeams.Utils {
@@ -15,49 +16,49 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - StartHtml
 
-        public static void StartHtml(string htmlFolder) {
+        public static void StartHtml(string htmlFolder, string exportPrefix) {
             if (!string.IsNullOrWhiteSpace(htmlFolder)) {
                 // Create the html export folder
                 Directory.CreateDirectory(htmlFolder);
 
                 // Confirm the path exists
                 if (Path.Exists(htmlFolder)) {
-                    string htmlFilePath = $"{htmlFolder}/{EXPORT_FILE}";
+                    string htmlFilePath = $"{htmlFolder}/{exportPrefix}_{EXPORT_FILE}";
                     if (
                         !string.IsNullOrEmpty(htmlFilePath) &&
                         !File.Exists(htmlFilePath)
                     ) {
-                        File.WriteAllText(htmlFilePath, $"<!DOCTYPE html>{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"<html>{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"<head>{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"<style>{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"html {{{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    font-family: Arial, Helvetica, sans-serif;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"blockquote {{{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    margin: 0;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    padding: 5px;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    background: #eee;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    border-radius: 5px;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    border-style: solid ;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    border-width: 1px;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"hr {{{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    border-top: 1px solid #c0c0c0;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"#user_id {{{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    font-weight: bold;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"#epoch_time {{{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    font-weight: lighter;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"#message_text {{{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    font-weight: normal;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"    white-space: pre-wrap;{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"}}{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"</style>{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"</head>{Environment.NewLine}");
-                        File.AppendAllText(htmlFilePath, $"<body>{Environment.NewLine}");
+                        File.WriteAllText(htmlFilePath, @"<!DOCTYPE html>
+<html>
+<head>
+<style>
+html {
+    font-family: Arial, Helvetica, sans-serif;
+}
+blockquote {
+    margin: 0;
+    padding: 5px;
+    background: #eee;
+    border-radius: 5px;
+    border-style: solid ;
+    border-width: 1px;
+}
+hr {
+    border-top: 1px solid #c0c0c0;
+}
+#user_id {
+    font-weight: bold;
+}
+#epoch_time {
+    font-weight: lighter;
+}
+#message_text {
+    font-weight: normal;
+    white-space: pre-wrap;
+}
+</style>
+</head>
+<body>");
 
                         s_logger.Debug($"Started HTML export file:{htmlFilePath}");
                     }
@@ -68,9 +69,9 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - MessageToHtml
 
-        public static void MessageToHtml(string htmlFolder, SlackMessage? message) {
+        public static void MessageToHtml(string htmlFolder, string exportPrefix, SlackMessage? message) {
             if (Path.Exists(htmlFolder)) {
-                string htmlFilePath = $"{htmlFolder}/{EXPORT_FILE}";
+                string htmlFilePath = $"{htmlFolder}/{exportPrefix}_{EXPORT_FILE}";
                 if (
                     !string.IsNullOrEmpty(htmlFilePath) &&
                     File.Exists(htmlFilePath) &&
@@ -94,38 +95,37 @@ namespace SlackToTeams.Utils {
                         )
                     )
                 ) {
-                    string htmlBody = "";
+                    StringBuilder htmlBody = new();
                     if (!string.IsNullOrWhiteSpace(message.Text)) {
-                        htmlBody += message.Text.Trim();
+                        htmlBody.Append(message.Text.Trim());
                     }
                     if (
                         message.Attachments != null &&
                         message.Attachments.Count > 0
                     ) {
-                        htmlBody += message.HtmlAttachments();
+                        htmlBody.Append(message.HtmlAttachments());
                     }
                     if (
                         message.HostedContents != null &&
                         message.HostedContents.Count > 0
                     ) {
-                        htmlBody += message.HtmlHostedContents();
+                        htmlBody.Append(message.HtmlHostedContents());
                     }
                     if (
                         message.Reactions != null &&
                         message.Reactions.Count > 0
                     ) {
-                        htmlBody += message.HtmlReactions();
+                        htmlBody.Append(message.HtmlReactions());
                     }
 
                     htmlBody = htmlBody.Replace(Environment.NewLine, "<br>");
 
-                    File.AppendAllText(htmlFilePath, $"<div>{Environment.NewLine}");
-                    File.AppendAllText(htmlFilePath, $"<span id=\"user_id\">{message.User?.DisplayName}</span>");
-                    File.AppendAllText(htmlFilePath, $"&nbsp;");
-                    File.AppendAllText(htmlFilePath, $"<span id=\"epoch_time\">{ConvertHelper.SlackTimestampToDateTimeOffset(message.Date).DateTime:G}</span>{Environment.NewLine}");
-                    File.AppendAllText(htmlFilePath, $"<div id=\"message_text\">{htmlBody}</div>{Environment.NewLine}");
-                    File.AppendAllText(htmlFilePath, $"</div>{Environment.NewLine}");
-                    File.AppendAllText(htmlFilePath, $"<hr>{Environment.NewLine}");
+                    File.AppendAllText(htmlFilePath, $@"
+<div>
+<span id='user_id'>{message.User?.DisplayName}</span>&nbsp;<span id='epoch_time'>{ConvertHelper.SlackTimestampToDateTime(message.Date):G}</span>
+<div id='message_text'>{htmlBody}</div>
+</div>
+<hr>");
                 }
             }
         }
@@ -133,15 +133,15 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - EndHtml
 
-        public static void EndHtml(string htmlFolder) {
+        public static void EndHtml(string htmlFolder, string exportPrefix) {
             if (Path.Exists(htmlFolder)) {
-                string htmlFilePath = $"{htmlFolder}/{EXPORT_FILE}";
+                string htmlFilePath = $"{htmlFolder}/{exportPrefix}_{EXPORT_FILE}";
                 if (
                     !string.IsNullOrEmpty(htmlFilePath) &&
                     File.Exists(htmlFilePath)
                 ) {
-                    File.AppendAllText(htmlFilePath, $"</body>{Environment.NewLine}");
-                    File.AppendAllText(htmlFilePath, $"</html>{Environment.NewLine}");
+                    File.AppendAllText(htmlFilePath, @"</body>
+</html>");
 
                     s_logger.Debug($"Started HTML export file:{htmlFilePath}");
                 }
