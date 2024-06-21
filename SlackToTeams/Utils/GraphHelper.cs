@@ -411,9 +411,9 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Sending Messages
 
-        #region Method - SendMessageToChannelThreadAsync
+        #region Method - SendMessageToThreadAsync
 
-        public async Task<ChatMessage?> SendMessageToChannelThreadAsync(string teamId, string channelId, string threadId, SlackMessage message) {
+        public async Task<ChatMessage?> SendMessageToThreadAsync(string teamId, string channelId, string threadId, SlackMessage message) {
             var msg = message.ToChatMessage();
 
             // Send the message
