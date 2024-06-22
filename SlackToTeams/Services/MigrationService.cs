@@ -119,6 +119,7 @@ namespace SlackToTeams.Services {
                         Console.Write("Do you want to load it? [Y/n] ");
                         Console.ResetColor();
                         input = Console.ReadLine();
+                        CheckShouldStop();
                         if (
                             string.IsNullOrEmpty(input) ||
                             input.Equals("y", StringComparison.CurrentCultureIgnoreCase) ||
@@ -135,8 +136,6 @@ namespace SlackToTeams.Services {
                     List<SlackUser> userList = await ScanAndHandleUsers(graphHelper, slackArchiveBasePath, loadCurrentUserList);
                     Console.WriteLine();
 
-                    CheckShouldStop();
-
                     Console.ForegroundColor = ConsoleColor.DarkYellow;
                     if (
                         slackExportMode == ExportMode.Teams ||
@@ -148,7 +147,7 @@ namespace SlackToTeams.Services {
                     }
                     Console.ResetColor();
                     input = Console.ReadLine();
-
+                    CheckShouldStop();
                     if (
                         !string.IsNullOrEmpty(input) &&
                         (
@@ -158,9 +157,6 @@ namespace SlackToTeams.Services {
                         )
                     ) {
                         _logger.LogInformation("Starting to migrate messages");
-
-                        CheckShouldStop();
-
                         /*
                         ** MIGRATE MESSAGES FROM SLACK TO TEAMS
                         */
@@ -201,7 +197,7 @@ namespace SlackToTeams.Services {
                                     Console.Write("Do you want to finish migrating the team? [y/N] ");
                                     Console.ResetColor();
                                     input = Console.ReadLine();
-
+                                    CheckShouldStop();
                                     if (
                                         !string.IsNullOrEmpty(input) &&
                                         (
@@ -230,7 +226,6 @@ namespace SlackToTeams.Services {
                             slackExportMode == ExportMode.TeamsHtml
                         )
                     ) {
-                        CheckShouldStop();
                         /*
                         ** SHOW OPTION TO CLOSE MIGRATION BY TEAM NAME
                         */
@@ -307,7 +302,7 @@ namespace SlackToTeams.Services {
                         Console.Write("Do you want to migrate attachments to a team? [y/N] ");
                         Console.ResetColor();
                         input = Console.ReadLine();
-
+                        CheckShouldStop();
                         if (
                             !string.IsNullOrEmpty(input) &&
                             (
@@ -574,7 +569,7 @@ namespace SlackToTeams.Services {
                 Console.Write("Do you want to populate TeamIDs? [y/N] ");
                 Console.ResetColor();
                 string? input = Console.ReadLine();
-
+                CheckShouldStop();
                 if (
                     !string.IsNullOrEmpty(input) &&
                     (
@@ -641,6 +636,7 @@ namespace SlackToTeams.Services {
             Console.Write("Do you want to reload the User List from disk? [Y/n] ");
             Console.ResetColor();
             string? input = Console.ReadLine();
+            CheckShouldStop();
 
             if (string.IsNullOrEmpty(input) || input.Equals("y", StringComparison.CurrentCultureIgnoreCase) || input.Equals("yes", StringComparison.CurrentCultureIgnoreCase) || input.Equals("true", StringComparison.CurrentCultureIgnoreCase)) {
                 // Reload the userList from disk (used when user has made manual changes to the userList)
@@ -817,12 +813,15 @@ namespace SlackToTeams.Services {
                                     HtmlHelper.EndHtml(chanelHtmlFolder, currentHtmlYearMonth);
                                 }
                                 CheckShouldStop();
+                            } else {
+                                CheckShouldStop();
                             }
                         } else {
                             Console.ForegroundColor = ConsoleColor.Red;
                             Console.WriteLine($"FolderName folder does not exist :{slackChannelFilesPath}");
                             Console.ResetColor();
                             _logger.LogWarning("FolderName folder does not exist :{slackChannelFilesPath}", slackChannelFilesPath);
+                            CheckShouldStop();
                         }
                     } else {
                         if (
@@ -839,11 +838,13 @@ namespace SlackToTeams.Services {
                             Console.ResetColor();
                             _logger.LogWarning("FolderName details invalid folder:{slackFolder}", channel.SlackFolder);
                         }
+                        CheckShouldStop();
                     }
+                } else {
+                    CheckShouldStop();
                 }
             }
 
-            CheckShouldStop();
             _logger.LogDebug("ScanAndHandleMessages - End");
         }
 
