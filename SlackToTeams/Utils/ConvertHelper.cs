@@ -1,6 +1,7 @@
-﻿using System.Net;
-using System.Reflection;
+﻿using System.Reflection;
+using System.Text;
 using System.Text.RegularExpressions;
+using System.Web;
 using Serilog;
 using SlackToTeams.Models;
 
@@ -26,7 +27,17 @@ namespace SlackToTeams.Utils {
                 !string.IsNullOrEmpty(toConvert) &&
                 !toConvert.Contains(':')
             ) {
-                result = WebUtility.HtmlEncode(toConvert);
+                char[] chars = HttpUtility.HtmlEncode(toConvert).ToCharArray();
+                StringBuilder encodedValue = new();
+                foreach (char c in chars) {
+                    // above normal ASCII
+                    if ((int)c > 127) {
+                        encodedValue.Append("&#" + (int)c + ";");
+                    } else {
+                        encodedValue.Append(c);
+                    }
+                }
+                result = encodedValue.ToString();
             }
             return result;
         }
