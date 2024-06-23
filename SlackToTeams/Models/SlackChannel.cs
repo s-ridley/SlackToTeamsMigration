@@ -3,7 +3,6 @@
 
 using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
-using SlackToTeams.Utils;
 using System.Globalization;
 using System.Runtime.Serialization;
 

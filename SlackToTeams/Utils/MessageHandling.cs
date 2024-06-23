@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Net;
 using System.Text;
 using System.Web;
 using Newtonsoft.Json;
@@ -521,7 +520,7 @@ namespace SlackToTeams.Utils {
                         } else {
                             string? emojiName = token.SelectToken("name")?.ToString();
                             if (!string.IsNullOrEmpty(emojiName)) {
-                                _ = formattedText.Append($"<span id=\"emoji\">{WebUtility.HtmlEncode(ConvertHelper.SlackToEmoji(emojiName))}</span>");
+                                _ = formattedText.Append($"<span id=\"emoji\">{ConvertHelper.EmojiToHtml(ConvertHelper.SlackToEmoji(emojiName))}</span>");
                             }
                         }
                         break;

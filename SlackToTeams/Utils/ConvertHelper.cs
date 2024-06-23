@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Net;
+using System.Reflection;
 using System.Text.RegularExpressions;
 using Serilog;
 using SlackToTeams.Models;
@@ -14,6 +15,34 @@ namespace SlackToTeams.Utils {
 
         [GeneratedRegex(@"\W", RegexOptions.IgnoreCase)]
         private static partial Regex SafeFileRegex();
+
+        #endregion
+        #region Method - EmojiToHtml
+
+        public static string? EmojiToHtml(string? toConvert) {
+            string? result = toConvert;
+            // Dont convert emojis that are still in Slack format
+            if (
+                !string.IsNullOrEmpty(toConvert) &&
+                !toConvert.Contains(':')
+            ) {
+                result = WebUtility.HtmlEncode(toConvert);
+            }
+            return result;
+        }
+
+        #endregion
+        #region Method - FileSystemSafe
+
+        public static string FileSystemSafe(string toConvert) {
+            string result = string.Empty;
+
+            if (!string.IsNullOrEmpty(toConvert)) {
+                result = SafeFileRegex().Replace(toConvert, "");
+            }
+
+            return result;
+        }
 
         #endregion
         #region Method - ReplaceUserIdWithName
@@ -41,19 +70,6 @@ namespace SlackToTeams.Utils {
             } else {
                 return textToCheck;
             }
-        }
-
-        #endregion
-        #region Method - FileSystemSafe
-
-        public static string FileSystemSafe(string toConvert) {
-            string result = string.Empty;
-
-            if (!string.IsNullOrEmpty(toConvert)) {
-                result = SafeFileRegex().Replace(toConvert, "");
-            }
-
-            return result;
         }
 
         #endregion
@@ -220,7 +236,7 @@ namespace SlackToTeams.Utils {
                         "wave::skin-tone-2" => Emoji.WavingHand_MediumLightSkinTone,
                         "woman-shrugging::skin-tone-3" => Emoji.WomanShrugging_MediumSkinTone,
                         "yum" => Emoji.FaceSavoringFood,
-                        _ => slackReaction,
+                        _ => $":{slackReaction}:",
                     };
                 }
 
