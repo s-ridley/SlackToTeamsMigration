@@ -508,7 +508,7 @@ namespace SlackToTeams.Utils {
                             try {
                                 string[] unicodeHexArrary = unicodeHex.Split('-');
                                 if (unicodeHexArrary != null) {
-                                    _ = formattedText.Append($"<span>");
+                                    _ = formattedText.Append($"<span id=\"emoji\">");
                                     foreach (string str in unicodeHexArrary) {
                                         _ = formattedText.Append($"&#x{str};");
                                     }

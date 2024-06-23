@@ -124,16 +124,6 @@ namespace SlackToTeams.Utils {
                     }
                 }
 
-                // Check for starts with
-                if (string.IsNullOrWhiteSpace(result)) {
-                    foreach (FieldInfo field in typeof(Emoji).GetFields().Where(f => f.Name.StartsWith(processedReaction, StringComparison.CurrentCultureIgnoreCase))) {
-                        object? rawObject = field.GetRawConstantValue();
-                        if (rawObject != null) {
-                            result = rawObject.ToString();
-                        }
-                    }
-                }
-
                 if (string.IsNullOrWhiteSpace(result)) {
                     result = slackReaction switch {
                         "+1" => Emoji.ThumbsUp,

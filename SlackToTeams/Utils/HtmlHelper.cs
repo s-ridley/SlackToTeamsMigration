@@ -56,6 +56,9 @@ hr {
     font-weight: normal;
     white-space: pre-wrap;
 }
+#emoji {
+    font-size: 1.3em;
+}
 </style>
 </head>
 <body>");

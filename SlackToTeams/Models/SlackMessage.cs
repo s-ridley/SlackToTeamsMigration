@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Net;
 using System.Text;
 using Microsoft.Graph.Models;
 using SlackToTeams.Utils;
@@ -130,9 +131,9 @@ namespace SlackToTeams.Models {
                         if (!string.IsNullOrWhiteSpace(reaction.User.TeamsUserId)) {
                             Mentions ??= [];
                             Mentions.Add(reaction.User);
-                            _ = formattedText.Append($"{reaction.Emoji} <at id=\"{Mentions.Count}\">{reaction.User.DisplayName}</at><br>");
+                            _ = formattedText.Append($"{WebUtility.HtmlEncode(reaction.Emoji)} <at id=\"{Mentions.Count}\">{reaction.User.DisplayName}</at><br>");
                         } else {
-                            _ = formattedText.Append($"{reaction.Emoji} {reaction.User.DisplayName}<br>");
+                            _ = formattedText.Append($"{WebUtility.HtmlEncode(reaction.Emoji)} {reaction.User.DisplayName}<br>");
                         }
                     }
                 }
@@ -201,7 +202,7 @@ namespace SlackToTeams.Models {
                 foreach (var reaction in Reactions) {
                     if (reaction.User != null) {
                         formattedText ??= new();
-                        _ = formattedText.Append($"{reaction.Emoji} {reaction.User.DisplayName}{Environment.NewLine}");
+                        _ = formattedText.Append($"<span id=\"emoji\">{WebUtility.HtmlEncode(reaction.Emoji)}</span> {reaction.User.DisplayName}{Environment.NewLine}");
                     }
                 }
             }
