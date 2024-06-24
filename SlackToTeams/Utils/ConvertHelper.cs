@@ -132,6 +132,12 @@ namespace SlackToTeams.Utils {
 
             if (!string.IsNullOrWhiteSpace(slackReaction)) {
                 string processedReaction = slackReaction.Replace("_", string.Empty);
+                processedReaction = processedReaction.Replace("-", string.Empty);
+                processedReaction = processedReaction.Replace("::skintone1", "_LightSkinTone");
+                processedReaction = processedReaction.Replace("::skintone2", "_MediumLightSkinTone");
+                processedReaction = processedReaction.Replace("::skintone3", "_MediumSkinTone");
+                processedReaction = processedReaction.Replace("::skintone4", "_MediumDarkSkinTone");
+                processedReaction = processedReaction.Replace("::skintone5", "_DarkSkinTone");
 
                 // Check for exact match
                 foreach (FieldInfo field in typeof(Emoji).GetFields().Where(f => f.Name.Equals(processedReaction, StringComparison.CurrentCultureIgnoreCase))) {
@@ -161,12 +167,16 @@ namespace SlackToTeams.Utils {
                         "10bux" or "20bux" => Emoji.DollarBanknote,
                         "allears" or "nallears" => Emoji.Ear,
                         "argh" => Emoji.WearyFace,
-                        "beers" => Emoji.BeerMug,
+                        "beer" or "beers" => Emoji.BeerMug,
+                        "bike" => Emoji.Bicycle,
                         "biohazard_sign" => Emoji.Biohazard,
+                        "boom" => Emoji.Collision,
                         "bulb" => Emoji.LightBulb,
                         "cake" => Emoji.BirthdayCake,
+                        "champagne" => Emoji.BottleWithPoppingCork,
                         "chart_with_upwards_trend" => Emoji.ChartIncreasing,
                         "clap" => Emoji.ClappingHands,
+                        "cocktail" => Emoji.CocktailGlass,
                         "coffee" or "coffee2" => Emoji.HotBeverage,
                         "colbert" => Emoji.FaceWithRaisedEyebrow,
                         "cold_sweat" => Emoji.AnxiousFaceWithSweat,
@@ -174,14 +184,17 @@ namespace SlackToTeams.Utils {
                         "congratulations" => Emoji.JapaneseCongratulationsButton,
                         "cop" => Emoji.PoliceOfficer,
                         "cripes" => Emoji.AstonishedFace,
+                        "cry" => Emoji.CryingFace,
                         "dagger_knife" => Emoji.Dagger,
                         "dark_sunglasses" => Emoji.Sunglasses,
                         "earth_asia" => Emoji.GlobeShowingAsiaAustralia,
                         "eyeglasses" => Emoji.Glasses,
                         "face_holding_back_tears" => Emoji.BeamingFaceWithSmilingEyes,
-                        "face_palm" or "faceplam" => Emoji.PersonFacepalming,
+                        "face_palm" or "facepalm" => Emoji.PersonFacepalming,
                         "facepunch" => Emoji.OncomingFist,
                         "flag-in" => Emoji.FlagInHole,
+                        "grin" => Emoji.GrinningFace,
+                        "hand" => Emoji.HandWithFingersSplayed,
                         "hammer-down" => Emoji.Hammer,
                         "headphones" => Emoji.Headphone,
                         "heart" => Emoji.RedHeart,
@@ -193,27 +206,41 @@ namespace SlackToTeams.Utils {
                         "hmmyes" => Emoji.ThinkingFace,
                         "hugging_face" => Emoji.SmilingFaceWithOpenHands,
                         "iphone" => Emoji.MobilePhone,
+                        "innocent" => Emoji.SmilingFaceWithHalo,
                         "japanese_ogre" => Emoji.Ogre,
                         "japanese_goblin" => Emoji.Goblin,
                         "joy" or "laughing" => Emoji.FaceWithTearsOfJoy,
                         "joy_cat" => Emoji.CatWithTearsOfJoy,
                         "kissing_heart" => Emoji.KissingFace,
+                        "knife_fork_plate" => Emoji.ForkAndKnifeWithPlate,
                         "laugh" => Emoji.RollingOnTheFloorLaughing,
                         "lower_left_ballpoint_pen" => Emoji.Pen,
                         "lower_left_paintbrush" => Emoji.Paintbrush,
+                        "mad" => Emoji.EnragedFace,
                         "mag" => Emoji.MagnifyingGlassTiltedLeft,
+                        "male-police-officer" => Emoji.ManPoliceOfficer,
                         "man-bowing" => Emoji.Bowling,
                         "man_in_business_suit_levitating" => Emoji.PersonInSuitLevitating,
+                        "man-shrugging" => Emoji.ManShrugging,
                         "mask" => Emoji.FaceWithMedicalMask,
                         "metal" or "the_horns" => Emoji.SignOfTheHorns,
                         "munch" => Emoji.FaceScreamingInFear,
                         "muscle" => Emoji.FlexedBiceps,
+                        "no_entry_sign" => Emoji.NoEntry,
                         "open_mouth" => Emoji.FaceWithOpenMouth,
                         "party_parrot" => Emoji.Parrot,
-                        "pinched_fingers::skin-tone-2" => Emoji.PinchedFingers_MediumLightSkinTone,
+                        "persevere" => Emoji.PerseveringFace,
                         "point_up_2" => Emoji.BackhandIndexPointingUp,
                         "pray" => Emoji.FoldedHands,
+                        "pray::skin-tone-1" => Emoji.FoldedHands_LightSkinTone,
+                        "pray::skin-tone-2" => Emoji.FoldedHands_MediumLightSkinTone,
+                        "pray::skin-tone-3" => Emoji.FoldedHands_MediumSkinTone,
+                        "pray::skin-tone-4" => Emoji.FoldedHands_MediumDarkSkinTone,
+                        "pray::skin-tone-5" => Emoji.FoldedHands_DarkSkinTone,
                         "question" => Emoji.WhiteQuestionMark,
+                        "radioactive_sign" => Emoji.Radioactive,
+                        "rage" => Emoji.EnragedFace,
+                        "rain_cloud" => Emoji.CloudWithRain,
                         "raised_hands" => Emoji.RaisedHand,
                         "raised_hands::skin-tone-2" => Emoji.RaisedHand_MediumLightSkinTone,
                         "relaxed" => Emoji.RelievedFace,
@@ -221,6 +248,7 @@ namespace SlackToTeams.Utils {
                         "rip" => Emoji.Headstone,
                         "runner" => Emoji.PersonRunning,
                         "scream" => Emoji.FaceScreamingInFear,
+                        "scream_cat" => Emoji.WearyCat,
                         "science" => Emoji.Scientist,
                         "sigh" => Emoji.FrowningFace,
                         "siren" => Emoji.PoliceCarLight,
@@ -235,7 +263,6 @@ namespace SlackToTeams.Utils {
                         "spock-hand" => Emoji.VulcanSalute,
                         "ssh" => Emoji.ShushingFace,
                         "stare" => Emoji.FaceWithoutMouth,
-                        "star-struck" => Emoji.StarStruck,
                         "stonk" => Emoji.AstonishedFace,
                         "stuck_out_tongue" => Emoji.Tongue,
                         "stuck_out_tongue_winking_eye" => Emoji.WinkingFaceWithTongue,
@@ -244,6 +271,7 @@ namespace SlackToTeams.Utils {
                         "suspense" => Emoji.GrimacingFace,
                         "sweat_smile" => Emoji.GrinningFaceWithSweat,
                         "swimmer" => Emoji.PersonSwimming,
+                        "table_tennis_paddle_and_ball" => Emoji.PingPong,
                         "tada" => Emoji.MagicWand,
                         "thatsright" or "this" or "thumbsup_all" => Emoji.ThumbsUp,
                         "toot" => Emoji.PartyingFace,
@@ -251,7 +279,7 @@ namespace SlackToTeams.Utils {
                         "unicorn_face" => Emoji.Unicorn,
                         "wave" => Emoji.WavingHand,
                         "wave::skin-tone-2" => Emoji.WavingHand_MediumLightSkinTone,
-                        "woman-shrugging::skin-tone-3" => Emoji.WomanShrugging_MediumSkinTone,
+                        "wink" => Emoji.WinkingFace,
                         "yum" => Emoji.FaceSavoringFood,
                         _ => $":{slackReaction}:",
                     };
@@ -259,7 +287,7 @@ namespace SlackToTeams.Utils {
 
                 if (
                     !string.IsNullOrWhiteSpace(result) &&
-                    result.Equals(slackReaction)
+                    result.Equals($":{slackReaction}:")
                 ) {
                     s_logger.Warning("No Emoji found for slackReaction[{slackReaction}]", slackReaction);
                 }
