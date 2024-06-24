@@ -168,7 +168,7 @@ namespace SlackToTeams.Utils {
                         "chart_with_upwards_trend" => Emoji.ChartIncreasing,
                         "clap" => Emoji.ClappingHands,
                         "coffee" or "coffee2" => Emoji.HotBeverage,
-                        "colbert " => Emoji.FaceWithRaisedEyebrow,
+                        "colbert" => Emoji.FaceWithRaisedEyebrow,
                         "cold_sweat" => Emoji.AnxiousFaceWithSweat,
                         "confuoot" => Emoji.ConfusedFace,
                         "congratulations" => Emoji.JapaneseCongratulationsButton,
