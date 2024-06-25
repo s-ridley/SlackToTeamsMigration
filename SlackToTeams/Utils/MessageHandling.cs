@@ -307,52 +307,12 @@ namespace SlackToTeams.Utils {
             if (!string.IsNullOrWhiteSpace(subtype)) {
                 switch (subtype) {
                     case "bot_message":
-                        string? title = obj.SelectToken("attachments[0].title")?.ToString();
-                        string? titleLink = obj.SelectToken("attachments[0].title_link")?.ToString();
-                        string? preText = obj.SelectToken("attachments[0].pretext")?.ToString();
-                        var fields = obj.SelectTokens("attachments[0].fields[*]").ToList();
-                        string? footer = obj.SelectToken("attachments[0].footer")?.ToString();
+                        messageText = ProcessBotMessage(obj, userList);
 
-                        StringBuilder formattedText = new();
-
-                        if (!string.IsNullOrEmpty(title)) {
-                            if (string.IsNullOrEmpty(titleLink)) {
-                                formattedText.AppendLine($"<strong>{title}</strong>");
-                            } else {
-                                formattedText.AppendLine($"<strong><a href='{titleLink}'>{HttpUtility.HtmlEncode(title)}</a></strong>");
-                            }
+                        if (string.IsNullOrWhiteSpace(messageText)) {
+                            (messageText, mentions) = ProcessText(obj, channelList, userList, messageText, mentions);
                         }
 
-                        if (!string.IsNullOrEmpty(preText)) {
-                            formattedText.AppendLine($"{preText}");
-                        }
-
-                        if (
-                            fields != null &&
-                            fields.Count > 0
-                        ) {
-                            foreach (JToken field in fields) {
-                                string? fieldTitle = field.SelectToken("title")?.ToString();
-                                string? fieldValue = field.SelectToken("value")?.ToString();
-
-                                if (
-                                    !string.IsNullOrEmpty(fieldTitle) &&
-                                    !string.IsNullOrEmpty(fieldValue)
-                                ) {
-                                    fieldValue = ConvertHelper.ReplaceUserIdWithName(
-                                        fieldValue, // textToCheck
-                                        userList
-                                    );
-                                    formattedText.AppendLine($"<strong>{HttpUtility.HtmlEncode(fieldTitle)}:</strong> {HttpUtility.HtmlEncode(fieldValue)}");
-                                }
-                            }
-                        }
-
-                        if (!string.IsNullOrEmpty(footer)) {
-                            formattedText.AppendLine($"{footer}");
-                        }
-
-                        messageText = formattedText.ToString();
                         stopProcessing = true;
                         break;
                     case "channel_join":
@@ -379,30 +339,125 @@ namespace SlackToTeams.Utils {
                         break;
                 }
             }
-
             if (!stopProcessing) {
-                // Check for rich text block
-                var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
+                (messageText, mentions) = ProcessText(obj, channelList, userList, messageText, mentions);
+            }
 
-                if (
-                    richTextArray != null &&
-                    richTextArray.Count > 0
-                ) {
-                    // Process the rich text block
-                    StringBuilder formattedText = new();
-                    mentions = ProcessRichText(formattedText, richTextArray, channelList, userList, mentions);
-                    messageText = formattedText.ToString();
-                } else {
-                    // Simple text, get it directly from text field
-                    string? text = obj.SelectToken("text")?.ToString();
-                    if (!string.IsNullOrWhiteSpace(text)) {
-                        text = ConvertHelper.ReplaceUserIdWithName(
-                            text, // textToCheck
-                            userList
-                        );
+            return (messageText, mentions);
+        }
 
-                        messageText = HttpUtility.HtmlEncode(text);
+        #endregion
+        #region Method - ProcessBotMessage
+
+        static string ProcessBotMessage(JObject obj, List<SlackUser> userList) {
+            string messageText = string.Empty;
+
+            // Check for attachments
+            var attachmentsArray = obj.SelectTokens("attachments[*]").ToList();
+
+            if (
+                attachmentsArray != null &&
+                attachmentsArray.Count > 0
+            ) {
+                StringBuilder formattedText = new();
+
+                foreach (JToken token in attachmentsArray) {
+                    string? authorName = token.SelectToken("author_name")?.ToString();
+                    string? title = token.SelectToken("title")?.ToString();
+                    string? titleLink = token.SelectToken("title_link")?.ToString();
+                    string? preText = token.SelectToken("pretext")?.ToString();
+                    var fields = token.SelectTokens("fields[*]").ToList();
+                    string? footer = token.SelectToken("footer")?.ToString();
+                    string? color = token.SelectToken("color")?.ToString();
+
+                    if (!string.IsNullOrEmpty(preText)) {
+                        formattedText.AppendLine($"{preText}");
                     }
+
+                    if (
+                        !string.IsNullOrEmpty(authorName) ||
+                        !string.IsNullOrEmpty(title) ||
+                        !string.IsNullOrEmpty(footer)
+                    ) {
+                        if (!string.IsNullOrEmpty(color)) {
+                            formattedText.Append($"<hr style='border-top: 5px solid #{color};'>");
+                        }
+
+                        if (!string.IsNullOrEmpty(authorName)) {
+                            formattedText.AppendLine($"<strong>{authorName}</strong>");
+                        }
+
+                        if (!string.IsNullOrEmpty(title)) {
+                            if (string.IsNullOrEmpty(titleLink)) {
+                                formattedText.AppendLine($"<strong>{title}</strong>");
+                            } else {
+                                formattedText.AppendLine($"<strong><a href='{titleLink}'>{HttpUtility.HtmlEncode(title)}</a></strong>");
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(footer)) {
+                            formattedText.AppendLine($"{footer}");
+                        }
+                    }
+
+                    if (
+                        fields != null &&
+                        fields.Count > 0
+                    ) {
+                        foreach (JToken field in fields) {
+                            string? fieldTitle = field.SelectToken("title")?.ToString();
+                            string? fieldValue = field.SelectToken("value")?.ToString();
+
+                            if (
+                                !string.IsNullOrEmpty(fieldTitle) &&
+                                !string.IsNullOrEmpty(fieldValue)
+                            ) {
+                                fieldValue = ConvertHelper.ReplaceUserIdWithName(
+                                    fieldValue, // textToCheck
+                                    userList
+                                );
+
+                                if (!string.IsNullOrEmpty(color)) {
+                                    formattedText.Append($"<hr style='border-top: 5px solid #{color};'>");
+                                }
+
+                                formattedText.AppendLine($"<strong>{HttpUtility.HtmlEncode(fieldTitle)}:</strong> {HttpUtility.HtmlEncode(fieldValue)}");
+                            }
+                        }
+                    }
+                }
+
+                messageText = formattedText.ToString();
+            }
+
+            return messageText;
+        }
+
+        #endregion
+        #region Method - ProcessText
+
+        static (string, List<SlackUser>?) ProcessText(JObject obj, List<SlackChannel> channelList, List<SlackUser> userList, string messageText, List<SlackUser>? mentions) {
+            // Check for rich text block
+            var richTextArray = obj.SelectTokens("blocks[*].elements[*].elements[*]").ToList();
+
+            if (
+                richTextArray != null &&
+                richTextArray.Count > 0
+            ) {
+                // Process the rich text block
+                StringBuilder formattedText = new();
+                mentions = ProcessRichText(formattedText, richTextArray, channelList, userList, mentions);
+                messageText = formattedText.ToString();
+            } else {
+                // Simple text, get it directly from text field
+                string? text = obj.SelectToken("text")?.ToString();
+                if (!string.IsNullOrWhiteSpace(text)) {
+                    text = ConvertHelper.ReplaceUserIdWithName(
+                        text, // textToCheck
+                        userList
+                    );
+
+                    messageText = HttpUtility.HtmlEncode(text);
                 }
             }
 

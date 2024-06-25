@@ -75,6 +75,9 @@ hr {
         public static void MessageToHtml(string htmlFolder, string exportPrefix, SlackMessage? message) {
             if (Path.Exists(htmlFolder)) {
                 string htmlFilePath = $"{htmlFolder}/{exportPrefix}_{EXPORT_FILE}";
+
+                s_logger.Debug($"Started - HTML export file:{htmlFilePath} message.Date:{message?.Date} message.From:{message?.User?.DisplayName}");
+
                 if (
                     !string.IsNullOrEmpty(htmlFilePath) &&
                     File.Exists(htmlFilePath) &&
@@ -129,6 +132,10 @@ hr {
 <div id='message_text'>{htmlBody}</div>
 </div>
 <hr>");
+
+                    s_logger.Debug($"Finished - HTML export file:{htmlFilePath} message.Date:{message?.Date} message.From:{message?.User?.DisplayName}");
+                } else {
+                    s_logger.Debug($"Finished - NO message to export file:{htmlFilePath} message.Date:{message?.Date} message.From:{message?.User?.DisplayName}");
                 }
             }
         }
