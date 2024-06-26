@@ -1,6 +1,8 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
+using System.Diagnostics.Eventing.Reader;
+using System.Net;
 using Microsoft.Graph.Models;
 using Serilog;
 using SlackToTeams.Utils;
@@ -29,6 +31,7 @@ namespace SlackToTeams.Models {
         public string? MimeType { get; set; }
         public string? ContentURL { get; set; }
         public string? ThumbnailUrl { get; set; }
+        public bool FileMissing { get; private set; } = false;
 
         #endregion
         #region Constructors
@@ -85,23 +88,30 @@ namespace SlackToTeams.Models {
                     s_logger.Debug("ToBase64 - Converting SlackURL [{SlackURL}] to Base64", SlackURL);
                     Console.WriteLine("Converting \"{0}\" from Slack to Base64", Name);
                     var response = await client.GetAsync($"{SlackURL}");
-                    // Make sure the response is a success 
-                    _ = response.EnsureSuccessStatusCode();
-                    // Read the response content into a byte array
-                    response.Content.ReadAsByteArrayAsync().Wait();
-                    // Read out the response byte array
-                    ContentBytes = response.Content.ReadAsByteArrayAsync().Result;
-                    // Convert the byte array to a base64 string
-                    //Base64 = Convert.ToBase64String(slackBytes);
-                    s_logger.Debug("ToBase64 - Successfully SlackURL [{SlackURL}] to to Base64", SlackURL);
-                    Console.WriteLine("Successfully converted to Base64");
+                    // Check if the file still exsits
+                    FileMissing = (response.StatusCode == HttpStatusCode.NotFound);
+                    // Only proceed if the response was not 404
+                    if (!FileMissing) {
+                        // Make sure the response is a success 
+                        _ = response.EnsureSuccessStatusCode();
+                        // Read the response content into a byte array
+                        response.Content.ReadAsByteArrayAsync().Wait();
+                        // Read out the response byte array
+                        ContentBytes = response.Content.ReadAsByteArrayAsync().Result;
+                        // Convert the byte array to a base64 string
+                        //Base64 = Convert.ToBase64String(slackBytes);
+                        s_logger.Debug("ToBase64 - Successfully SlackURL [{SlackURL}] to to Base64", SlackURL);
+                        Console.WriteLine("Successfully converted to Base64");
+                    } else {
+                        s_logger.Debug("ToBase64 - Downloaded failed SlackURL [{SlackURL}] response code [{responseCode}]", SlackURL, response.StatusCode);
+                        Console.WriteLine("Failed to convert to Base64 response code \"{0}\"", response.StatusCode);
+                    }
                 } catch (Exception ex) {
                     s_logger.Error(ex, "ToBase64 - Error Converting SlackURL [{SlackURL}] to Base64 error:{errorMessage}", SlackURL, ex.Message);
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"Error unable to download :{SlackURL}");
                     Console.WriteLine(ex);
                     Console.ResetColor();
-                    throw;
                 } finally {
                     client?.Dispose();
                 }
@@ -138,25 +148,32 @@ namespace SlackToTeams.Models {
                             s_logger.Debug("DownloadFile - Downloading SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, fullFilePath);
                             Console.WriteLine("Downloading \"{0}\" to \"{1}\"", Name, downloadFolder);
                             var response = await client.GetAsync($"{SlackURL}");
-                            // Make sure the response is a success 
-                            _ = response.EnsureSuccessStatusCode();
-                            // Read the response content into a Stream
-                            await using var slackStream = await response.Content.ReadAsStreamAsync();
-                            // Return the stream to the start
-                            _ = slackStream.Seek(0, SeekOrigin.Begin);
-                            // Create the FileStream
-                            using var fileStream = new FileStream(fullFilePath, FileMode.Create);
-                            // Copy slackFileStream to fileStream
-                            await slackStream.CopyToAsync(fileStream);
-                            s_logger.Debug("DownloadFile - Successfully Downloaded SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, downloadFolder);
-                            Console.WriteLine("Successfully Downloaded \"{0}\" to \"{1}\"", Name, downloadFolder);
+                            // Check if the file still exsits
+                            FileMissing = (response.StatusCode == HttpStatusCode.NotFound);
+                            // Only proceed if the response was not 404
+                            if (!FileMissing) {
+                                // Make sure the response is a success 
+                                _ = response.EnsureSuccessStatusCode();
+                                // Read the response content into a Stream
+                                await using var slackStream = await response.Content.ReadAsStreamAsync();
+                                // Return the stream to the start
+                                _ = slackStream.Seek(0, SeekOrigin.Begin);
+                                // Create the FileStream
+                                using var fileStream = new FileStream(fullFilePath, FileMode.Create);
+                                // Copy slackFileStream to fileStream
+                                await slackStream.CopyToAsync(fileStream);
+                                s_logger.Debug("DownloadFile - Successfully Downloaded SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, downloadFolder);
+                                Console.WriteLine("Successfully Downloaded \"{0}\" to \"{1}\"", Name, downloadFolder);
+                            } else {
+                                s_logger.Debug("DownloadFile - Downloaded failed SlackURL [{SlackURL}] response code [{responseCode}]", SlackURL, response.StatusCode);
+                                Console.WriteLine("Downloaded failed \"{0}\" response code \"{1}\"", Name, response.StatusCode);
+                            }
                         } catch (Exception ex) {
                             s_logger.Error(ex, "DownloadFile - Error downloading SlackURL [{SlackURL}] to [{fullFilePath}] error:{errorMessage}", SlackURL, fullFilePath, ex.Message);
                             Console.ForegroundColor = ConsoleColor.Red;
                             Console.WriteLine($"Error unable to download :{SlackURL}");
                             Console.WriteLine(ex);
                             Console.ResetColor();
-                            throw;
                         } finally {
                             client?.Dispose();
                         }

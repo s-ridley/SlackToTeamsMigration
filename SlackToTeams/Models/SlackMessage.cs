@@ -89,7 +89,7 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.Name) &&
                         !string.IsNullOrWhiteSpace(attachment.SlackURL)
                     ) {
-                        _ = formattedText.Append($"[{attachment.Name}]<br>");
+                        _ = formattedText.Append($"[{(attachment.FileMissing ? "File has been deleted" : attachment.Name)}]<br>");
                     }
                 }
             }
@@ -177,7 +177,7 @@ namespace SlackToTeams.Models {
                         !string.IsNullOrWhiteSpace(attachment.SlackURL)
                     ) {
                         formattedText ??= new();
-                        _ = formattedText.Append($"{attachment.Name}{Environment.NewLine}");
+                        _ = formattedText.Append($"{(attachment.FileMissing ? "File has been deleted" : attachment.Name)}{Environment.NewLine}");
                     }
                 }
             }

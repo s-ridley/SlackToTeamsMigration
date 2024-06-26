@@ -742,6 +742,7 @@ namespace SlackToTeams.Services {
                                                 }
                                             }
 
+                                            // If the message has attachements then download them
                                             if (
                                                 message.Attachments != null &&
                                                 message.Attachments.Count > 0
@@ -751,7 +752,6 @@ namespace SlackToTeams.Services {
                                                         attachment != null &&
                                                         !string.IsNullOrWhiteSpace(attachment.SlackURL)
                                                     ) {
-                                                        // If so upload to teams drive
                                                         await attachment.DownloadFile(
                                                             channelDownloadFolder,  // downloadFolder
                                                             true                    // overwriteFile
