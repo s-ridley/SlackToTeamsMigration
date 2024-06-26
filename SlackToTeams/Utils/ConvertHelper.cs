@@ -14,8 +14,7 @@ namespace SlackToTeams.Utils {
         [GeneratedRegex(@"<\@\w+>")]
         private static partial Regex UserIdRegex();
 
-        [GeneratedRegex(@"\W", RegexOptions.IgnoreCase)]
-        private static partial Regex SafeFileRegex();
+        public static readonly List<string> ReservedFilenames = ["CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"];
 
         #endregion
         #region Method - EmojiToHtml
@@ -45,14 +44,28 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - FileSystemSafe
 
-        public static string FileSystemSafe(string toConvert) {
-            string result = string.Empty;
-
-            if (!string.IsNullOrEmpty(toConvert)) {
-                result = SafeFileRegex().Replace(toConvert, "");
+        public static string FileSystemSafe(string? toConvert) {
+            if (!string.IsNullOrWhiteSpace(toConvert)) {
+                // A filename cannot be one of PatientrackConst.ReservedFilenames
+                if (ReservedFilenames.Contains(toConvert)) {
+                    // If it is then it needs to have '~' appended
+                    toConvert += "~";
+                } else {
+                    toConvert = toConvert.Replace(' ', '~');
+                    toConvert = toConvert.Replace('<', '~');
+                    toConvert = toConvert.Replace('>', '~');
+                    toConvert = toConvert.Replace(':', '~');
+                    toConvert = toConvert.Replace('"', '~');
+                    toConvert = toConvert.Replace('/', '~');
+                    toConvert = toConvert.Replace('\\', '~');
+                    toConvert = toConvert.Replace('|', '~');
+                    toConvert = toConvert.Replace('?', '~');
+                    toConvert = toConvert.Replace('*', '~');
+                }
+                return toConvert;
+            } else {
+                return string.Empty;
             }
-
-            return result;
         }
 
         #endregion
@@ -102,7 +115,7 @@ namespace SlackToTeams.Utils {
                     if (long.TryParse(tempTs, out long ms)) {
                         result = DateTimeOffset.FromUnixTimeMilliseconds(ms);
                     }
-                } else if (timestamp.IndexOf(".") > 0) {
+                } else if (timestamp.IndexOf('.') > 0) {
                     string tempTs = timestamp.Replace(".", "");
                     tempTs = tempTs[..^3];
                     string lowerTs = timestamp[^3..];
@@ -219,6 +232,7 @@ namespace SlackToTeams.Utils {
                         "cry" => Emoji.CryingFace,
                         "crying_cat_face" => Emoji.CryingCat,
                         "dagger_knife" => Emoji.Dagger,
+                        "dancer" => Emoji.WomanDancing,
                         "dark_sunglasses" => Emoji.Sunglasses,
                         "dash" => Emoji.DashingAway,
                         "dizzy_face" => Emoji.FaceWithCrossedOutEyes,
@@ -226,12 +240,13 @@ namespace SlackToTeams.Utils {
                         "earth_asia" => Emoji.GlobeShowingAsiaAustralia,
                         "eyeglasses" => Emoji.Glasses,
                         "face_holding_back_tears" => Emoji.BeamingFaceWithSmilingEyes,
-                        "face_palm" or "facepalm" => Emoji.PersonFacepalming,
+                        "face_palm" or "facepalm" or "faceplam" => Emoji.PersonFacepalming,
                         "fishing_pole_and_fish" => Emoji.FishingPole,
                         "facepunch" => Emoji.OncomingFist,
                         "flag-au" => Emoji.Flag_Australia,
                         "flag-in" => Emoji.FlagInHole,
                         "fries" => Emoji.FrenchFries,
+                        "gift" => Emoji.WrappedGift,
                         "grey_question" or "question" => Emoji.WhiteQuestionMark,
                         "grin" => Emoji.GrinningFace,
                         "hand" => Emoji.HandWithFingersSplayed,
@@ -314,6 +329,7 @@ namespace SlackToTeams.Utils {
                         "spock-hand" => Emoji.VulcanSalute,
                         "ssh" => Emoji.ShushingFace,
                         "stare" => Emoji.FaceWithoutMouth,
+                        "stew" => Emoji.PotOfFood,
                         "stonk" => Emoji.AstonishedFace,
                         "stuck_out_tongue" => Emoji.Tongue,
                         "stuck_out_tongue_winking_eye" => Emoji.WinkingFaceWithTongue,

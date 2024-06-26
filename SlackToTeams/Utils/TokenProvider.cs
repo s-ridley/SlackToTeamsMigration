@@ -8,12 +8,24 @@ using Microsoft.Kiota.Abstractions.Authentication;
 
 namespace SlackToTeams.Utils {
     public class TokenProvider : IAccessTokenProvider {
+        #region Fields
 
         private readonly IConfidentialClientApplication _app;
+
+        #endregion
+        #region Properties
+
+        public AllowedHostsValidator AllowedHostsValidator { get; }
+
+        #endregion
+        #region Constructors
 
         public TokenProvider(IConfidentialClientApplication app) {
             _app = app;
         }
+
+        #endregion
+        #region Method - GetAuthorizationTokenAsync
 
         public Task<string> GetAuthorizationTokenAsync(Uri uri, Dictionary<string, object> additionalAuthenticationContext = default,
                 CancellationToken cancellationToken = default) {
@@ -22,6 +34,6 @@ namespace SlackToTeams.Utils {
             return Task.FromResult(result.AccessToken);
         }
 
-        public AllowedHostsValidator AllowedHostsValidator { get; }
+        #endregion
     }
 }

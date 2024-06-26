@@ -1126,7 +1126,7 @@ namespace SlackToTeams.Services {
                         teamId = await graphHelper.CreateTeamAsync(json);
                         actionName = ACTION_CREATE;
 
-                        _logger.LogDebug("Team creation result {teamId}", teamId);
+                        _logger.LogDebug("CreateTeam - Team creation result {teamId}", teamId);
                     }
                 }
             } catch (Exception ex) {
@@ -1151,7 +1151,7 @@ namespace SlackToTeams.Services {
                 Console.WriteLine($"Sucess {actionName} Team '{teamName}' ID[{teamId}]");
                 Console.ResetColor();
 
-                _logger.LogInformation("CreateTeam - Sucessfully created team :{teamName} ID[{teamId}]", teamName, teamId);
+                _logger.LogInformation("CreateTeam - Sucess {actionName} team :{teamName} ID[{teamId}]", actionName, teamName, teamId);
             }
 
             return teamId;

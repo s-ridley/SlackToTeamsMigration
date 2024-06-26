@@ -3,6 +3,7 @@
 
 using Microsoft.Graph.Models;
 using Serilog;
+using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
     public partial class SlackAttachment {
@@ -34,7 +35,7 @@ namespace SlackToTeams.Models {
 
         public SlackAttachment(string? slackUrl, string? name, string? title, string? fileType, string? mimeType, long? size, DateTimeOffset? date) {
             SlackURL = slackUrl;
-            Name = name;
+            Name = ConvertHelper.FileSystemSafe(name);
             Title = title;
             FileType = fileType;
             MimeType = mimeType;
@@ -94,7 +95,7 @@ namespace SlackToTeams.Models {
                     //Base64 = Convert.ToBase64String(slackBytes);
                     s_logger.Debug("ToBase64 - Successfully SlackURL [{SlackURL}] to to Base64", SlackURL);
                     Console.WriteLine("Successfully converted to Base64");
-                } catch (System.Net.WebException ex) {
+                } catch (Exception ex) {
                     s_logger.Error(ex, "ToBase64 - Error Converting SlackURL [{SlackURL}] to Base64 error:{errorMessage}", SlackURL, ex.Message);
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"Error unable to download :{SlackURL}");
@@ -116,10 +117,13 @@ namespace SlackToTeams.Models {
                 Directory.CreateDirectory(downloadFolder);
 
                 // Confirm the path exists
-                if (Path.Exists(downloadFolder)) {
+                if (
+                    Path.Exists(downloadFolder) &&
+                    !string.IsNullOrWhiteSpace(Name) &&
+                    !string.IsNullOrWhiteSpace(SlackURL)
+                ) {
                     string fullFilePath = $"{downloadFolder}/{Name}";
                     if (
-                        !string.IsNullOrWhiteSpace(SlackURL) &&
                         (
                             (
                                 File.Exists(fullFilePath) &&
@@ -146,7 +150,7 @@ namespace SlackToTeams.Models {
                             await slackStream.CopyToAsync(fileStream);
                             s_logger.Debug("DownloadFile - Successfully Downloaded SlackURL [{SlackURL}] to [{fullFilePath}]", SlackURL, downloadFolder);
                             Console.WriteLine("Successfully Downloaded \"{0}\" to \"{1}\"", Name, downloadFolder);
-                        } catch (System.Net.WebException ex) {
+                        } catch (Exception ex) {
                             s_logger.Error(ex, "DownloadFile - Error downloading SlackURL [{SlackURL}] to [{fullFilePath}] error:{errorMessage}", SlackURL, fullFilePath, ex.Message);
                             Console.ForegroundColor = ConsoleColor.Red;
                             Console.WriteLine($"Error unable to download :{SlackURL}");
