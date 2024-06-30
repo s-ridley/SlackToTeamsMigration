@@ -45,7 +45,8 @@ namespace SlackToTeams.Services {
             AuthenticationConfig? config = _config.Get<AuthenticationConfig>();
 
             if (config != null) {
-                ExportMode slackExportMode = _config.GetValue<ExportMode>("SlackExportMode");
+                ExportMode slackExportMode = _config.GetValue<ExportMode>("SlackExportMode", ExportMode.TeamsHtml);
+                bool downloadFiles = _config.GetValue<bool>("DownloadFiles", true);
 
                 Console.ForegroundColor = ConsoleColor.DarkRed;
                 Console.WriteLine();
@@ -183,7 +184,7 @@ namespace SlackToTeams.Services {
                                 slackExportMode == ExportMode.Html
                             ) {
                                 // Scan and send messages in Teams
-                                await ScanAndHandleMessages(team, graphHelper, slackArchiveBasePath, channelList, userList, slackExportMode);
+                                await ScanAndHandleMessages(team, graphHelper, slackArchiveBasePath, channelList, userList, slackExportMode, downloadFiles);
 
                                 if (
                                     graphHelper != null &&
@@ -669,7 +670,7 @@ namespace SlackToTeams.Services {
 
         #region Method - ScanAndHandleMessages
 
-        private async Task ScanAndHandleMessages(SlackTeam team, GraphHelper? graphHelper, string slackArchiveBasePath, List<SlackChannel> channelList, List<SlackUser> userList, ExportMode exportMode) {
+        private async Task ScanAndHandleMessages(SlackTeam team, GraphHelper? graphHelper, string slackArchiveBasePath, List<SlackChannel> channelList, List<SlackUser> userList, ExportMode exportMode, bool downloadFiles) {
             _logger.LogDebug("ScanAndHandleMessages - Start");
 
             foreach (var channel in channelList) {
@@ -745,7 +746,8 @@ namespace SlackToTeams.Services {
                                             // If the message has attachements then download them
                                             if (
                                                 message.Attachments != null &&
-                                                message.Attachments.Count > 0
+                                                message.Attachments.Count > 0 &&
+                                                downloadFiles
                                             ) {
                                                 foreach (var attachment in message.Attachments) {
                                                     if (
