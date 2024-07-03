@@ -17,10 +17,10 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - GetMessagesForDay
 
-        public static IEnumerable<SlackMessage> GetMessagesForDay(string channel, string path, List<SlackChannel> channels, List<SlackUser> users) {
-            s_logger.Debug("Getting message for channel:{channel} from file:{path}", channel, path);
+        public static IEnumerable<SlackMessage> GetMessagesForDay(string channelName, string path, List<SlackChannel> channels, List<SlackUser> users) {
+            s_logger.Debug("Getting message for channelName:{channelName} from file:{path}", channelName, path);
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine($"FolderName {channel} File {path}");
+            Console.WriteLine($"FolderName {channelName} File {path}");
             Console.ResetColor();
 
             if (File.Exists(path)) {
@@ -49,7 +49,7 @@ namespace SlackToTeams.Utils {
                             !string.IsNullOrWhiteSpace(subtype) &&
                             subtype.Equals("message_deleted", StringComparison.CurrentCultureIgnoreCase)
                         ) {
-                            s_logger.Debug("message deleted channel:{channel} from file:{path} timestamp:{messageTs}", channel, path, messageTs);
+                            s_logger.Debug("message deleted channelName:{channelName} from file:{path} timestamp:{messageTs}", channelName, path, messageTs);
                             continue;
                         }
 
@@ -223,7 +223,10 @@ namespace SlackToTeams.Utils {
         static string GetNameFromChannelId(List<SlackChannel> channelList, string channelId) {
             if (!string.IsNullOrWhiteSpace(channelId)) {
                 var channel = channelList.FirstOrDefault(channel => channel.SlackId == channelId);
-                if (channel != null) {
+                if (
+                    channel != null &&
+                    !string.IsNullOrWhiteSpace(channel.DisplayName)
+                ) {
                     return channel.DisplayName;
                 }
             }
@@ -328,12 +331,12 @@ namespace SlackToTeams.Utils {
                             if (!string.IsNullOrWhiteSpace(userFound.TeamsUserId)) {
                                 mentions ??= [];
                                 mentions.Add(userFound);
-                                messageText = $"<at id=\"{mentions.Count}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at> has joined the channel";
+                                messageText = $"<at id=\"{mentions.Count}\">{HttpUtility.HtmlEncode(userFound.DisplayName)}</at> has joined the channelName";
                             } else {
-                                messageText = HttpUtility.HtmlEncode($"<{userFound.DisplayName}> has joined the channel");
+                                messageText = HttpUtility.HtmlEncode($"<{userFound.DisplayName}> has joined the channelName");
                             }
                         } else {
-                            messageText = HttpUtility.HtmlEncode("<Unknown User> has joined the channel");
+                            messageText = HttpUtility.HtmlEncode("<Unknown User> has joined the channelName");
                         }
                         stopProcessing = true;
                         break;
@@ -579,7 +582,7 @@ namespace SlackToTeams.Utils {
                             }
                         }
                         break;
-                    case "channel":
+                    case "channelName":
                         string? channelId = token.SelectToken("channel_id")?.ToString();
 
                         if (string.IsNullOrEmpty(channelId)) {

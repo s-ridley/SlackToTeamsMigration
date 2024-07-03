@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using Azure.Identity;
@@ -9,7 +10,6 @@ using Microsoft.Graph;
 using Microsoft.Graph.Models;
 using Microsoft.Identity.Client;
 using Microsoft.Kiota.Abstractions.Authentication;
-using Newtonsoft.Json;
 using Serilog;
 using SlackToTeams.Models;
 using DriveUpload = Microsoft.Graph.Drives.Item.Items.Item.CreateUploadSession;
@@ -244,11 +244,11 @@ namespace SlackToTeams.Utils {
         #endregion
         #region Method - CreateChannelAsync
 
-        public async Task<string> CreateChannelAsync(string teamID, SlackChannel channel) {
+        public async Task<string> CreateChannelAsync(string teamId, SlackChannel channel) {
             string? channelId = string.Empty;
 
             if (channel != null) {
-                string json = JsonConvert.SerializeObject(channel);
+                string json = JsonSerializer.Serialize(channel);
 
                 if (!string.IsNullOrEmpty(json)) {
                     // Set creation mode to migration!
@@ -256,7 +256,7 @@ namespace SlackToTeams.Utils {
 
                     var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-                    var response = await PostToMSGraph($"teams/{teamID}/channels", content);
+                    var response = await PostToMSGraph($"teams/{teamId}/channels", content);
 
                     if (response != null) {
                         string responseContent = await response.Content.ReadAsStringAsync();
@@ -299,110 +299,118 @@ namespace SlackToTeams.Utils {
 
         #region Method - GetUserByUpnAsync
 
-        public async Task<string?> GetUserByUpnAsync(string userEmail) {
-            var users = await GraphClient.Users.GetAsync(requestConfiguration => {
-                requestConfiguration.QueryParameters.Select = ["id", "mail"];
-                requestConfiguration.QueryParameters.Filter = $"userPrincipalName eq '{userEmail}'";
-            });
-
+        public async Task<string?> GetUserByUpnAsync(string? userEmail) {
             string? userId = string.Empty;
-            if (
-                users != null &&
-                users.Value != null &&
-                users.Value.Count > 0
-            ) {
-                // There should be only one user so get the FirstOrDefault and if not null get the Id
-                userId = users.Value.FirstOrDefault()?.Id;
-            }
+            if (!string.IsNullOrEmpty(userEmail)) {
+                var users = await GraphClient.Users.GetAsync(requestConfiguration => {
+                    requestConfiguration.QueryParameters.Select = ["id", "mail"];
+                    requestConfiguration.QueryParameters.Filter = $"userPrincipalName eq '{userEmail}'";
+                });
 
+                if (
+                    users != null &&
+                    users.Value != null &&
+                    users.Value.Count > 0
+                ) {
+                    // There should be only one user so get the FirstOrDefault and if not null get the Id
+                    userId = users.Value.FirstOrDefault()?.Id;
+                }
+            }
             return userId;
         }
 
         #endregion
         #region Method - GetUserByEmailAsync
 
-        public async Task<string?> GetUserByEmailAsync(string userEmail) {
-            var users = await GraphClient.Users.GetAsync(requestConfiguration => {
-                requestConfiguration.QueryParameters.Select = ["id", "mail"];
-                requestConfiguration.QueryParameters.Filter = $"mail eq '{userEmail}'";
-            });
-
+        public async Task<string?> GetUserByEmailAsync(string? userEmail) {
             string? userId = string.Empty;
-            if (
-                users != null &&
-                users.Value != null &&
-                users.Value.Count > 0
-            ) {
-                // There should be only one user so get the FirstOrDefault and if not null get the Id
-                userId = users.Value.FirstOrDefault()?.Id;
-            }
+            if (!string.IsNullOrEmpty(userEmail)) {
+                var users = await GraphClient.Users.GetAsync(requestConfiguration => {
+                    requestConfiguration.QueryParameters.Select = ["id", "mail"];
+                    requestConfiguration.QueryParameters.Filter = $"mail eq '{userEmail}'";
+                });
 
+                if (
+                    users != null &&
+                    users.Value != null &&
+                    users.Value.Count > 0
+                ) {
+                    // There should be only one user so get the FirstOrDefault and if not null get the Id
+                    userId = users.Value.FirstOrDefault()?.Id;
+                }
+            }
             return userId;
         }
 
         #endregion
         #region Method - GetUserByDisplayNameAsync
 
-        public async Task<string?> GetUserByDisplayNameAsync(string displayName) {
-            var users = await GraphClient.Users.GetAsync(requestConfiguration => {
-                requestConfiguration.QueryParameters.Select = ["id", "mail"];
-                requestConfiguration.QueryParameters.Filter = $"displayName eq '{displayName}'";
-            });
-
+        public async Task<string?> GetUserByDisplayNameAsync(string? displayName) {
             string? userId = string.Empty;
-            if (
-                users != null &&
-                users.Value != null &&
-                users.Value.Count > 0
-            ) {
-                // There should be only one user so get the FirstOrDefault and if not null get the Id
-                userId = users.Value.FirstOrDefault()?.Id;
-            }
+            if (!string.IsNullOrEmpty(displayName)) {
+                var users = await GraphClient.Users.GetAsync(requestConfiguration => {
+                    requestConfiguration.QueryParameters.Select = ["id", "mail"];
+                    requestConfiguration.QueryParameters.Filter = $"displayName eq '{displayName}'";
+                });
 
+                if (
+                    users != null &&
+                    users.Value != null &&
+                    users.Value.Count > 0
+                ) {
+                    // There should be only one user so get the FirstOrDefault and if not null get the Id
+                    userId = users.Value.FirstOrDefault()?.Id;
+                }
+            }
             return userId;
         }
 
         #endregion
         #region Method - GetTeamByNameAsync
 
-        public async Task<string?> GetTeamByNameAsync(string teamName) {
-            var teams = await GraphClient.Teams.GetAsync(requestConfiguration => {
-                requestConfiguration.QueryParameters.Select = ["displayName", "id"];
-                requestConfiguration.QueryParameters.Filter = $"displayName eq '{teamName}'";
-            });
-
+        public async Task<string?> GetTeamByNameAsync(string? teamName) {
             string? teamId = string.Empty;
-            if (
-                teams != null &&
-                teams.Value != null &&
-                teams.Value.Count > 0
-            ) {
-                // There should be only one team so get the FirstOrDefault and if not null get the Id
-                teamId = teams.Value.FirstOrDefault()?.Id;
-            }
+            if (!string.IsNullOrEmpty(teamName)) {
+                var teams = await GraphClient.Teams.GetAsync(requestConfiguration => {
+                    requestConfiguration.QueryParameters.Select = ["displayName", "id"];
+                    requestConfiguration.QueryParameters.Filter = $"displayName eq '{teamName}'";
+                });
 
+                if (
+                    teams != null &&
+                    teams.Value != null &&
+                    teams.Value.Count > 0
+                ) {
+                    // There should be only one team so get the FirstOrDefault and if not null get the Id
+                    teamId = teams.Value.FirstOrDefault()?.Id;
+                }
+            }
             return teamId;
         }
 
         #endregion
         #region Method - GetChannelByNameAsync
 
-        public async Task<string?> GetChannelByNameAsync(string teamID, string channelName) {
-            var channels = await GraphClient.Teams[teamID].Channels.GetAsync(requestConfiguration => {
-                requestConfiguration.QueryParameters.Select = ["displayName", "id"];
-                requestConfiguration.QueryParameters.Filter = $"displayName eq '{channelName}'";
-            });
-
+        public async Task<string?> GetChannelByNameAsync(string? teamId, string? channelName) {
             string? channelId = string.Empty;
             if (
-                channels != null &&
-                channels.Value != null &&
-                channels.Value.Count > 0
+                !string.IsNullOrEmpty(teamId) &&
+                !string.IsNullOrEmpty(channelName)
             ) {
-                // There should be only one channel so get the FirstOrDefault and if not null get the Id
-                channelId = channels.Value.FirstOrDefault()?.Id;
-            }
+                var channels = await GraphClient.Teams[teamId].Channels.GetAsync(requestConfiguration => {
+                    requestConfiguration.QueryParameters.Select = ["displayName", "id"];
+                    requestConfiguration.QueryParameters.Filter = $"displayName eq '{channelName}'";
+                });
 
+                if (
+                    channels != null &&
+                    channels.Value != null &&
+                    channels.Value.Count > 0
+                ) {
+                    // There should be only one channel so get the FirstOrDefault and if not null get the Id
+                    channelId = channels.Value.FirstOrDefault()?.Id;
+                }
+            }
             return channelId;
         }
 

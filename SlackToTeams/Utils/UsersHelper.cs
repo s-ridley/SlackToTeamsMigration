@@ -47,9 +47,18 @@ namespace SlackToTeams.Utils {
 
                         SlackUser user;
                         if (isBot) {
-                            user = SlackUser.BotUser(userId, name);
+                            user = SlackUser.BotUser(
+                                userId,
+                                name
+                            );
                         } else {
-                            user = new(userId, name, email, isBot);
+                            user = new SlackUser(
+                                userId, // slackUserID
+                                null,   // teamsUserID
+                                name,   // displayName
+                                email,  // email
+                                isBot   // isBot
+                            );
                         }
 
                         simpleUserList.Add(user);

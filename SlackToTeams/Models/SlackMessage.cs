@@ -6,38 +6,30 @@ using Microsoft.Graph.Models;
 using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
-    public class SlackMessage {
+    public class SlackMessage(
+        SlackUser? user,
+        string? date,
+        string? threadDate,
+        string text,
+        List<SlackAttachment>? attachments,
+        List<SlackUser>? mentions,
+        List<SlackReaction>? reactions,
+        List<SlackHostedContent>? hostedContents
+    ) {
         #region Properties
 
-        public SlackUser? User { get; private set; }
-        public string Date { get; private set; }
-        public string? ThreadDate { get; private set; }
-        public bool IsInThread { get; private set; }
-        public bool IsParentThread { get; private set; }
-        public string Text { get; private set; }
-        public List<SlackAttachment>? Attachments { get; set; }
-        public List<SlackUser>? Mentions { get; set; }
-        public List<SlackReaction>? Reactions { get; set; }
-        public List<SlackHostedContent>? HostedContents { get; set; }
+        public SlackUser? User { get; private set; } = user;
+        public string? Date { get; private set; } = date;
+        public string? ThreadDate { get; private set; } = threadDate;
+        public bool IsInThread { get; private set; } = CheckIsInThread(threadDate);
+        public bool IsParentThread { get; private set; } = CheckIsParentThread(date, threadDate);
+        public string Text { get; private set; } = text;
+        public List<SlackAttachment>? Attachments { get; set; } = attachments;
+        public List<SlackUser>? Mentions { get; set; } = mentions;
+        public List<SlackReaction>? Reactions { get; set; } = reactions;
+        public List<SlackHostedContent>? HostedContents { get; set; } = hostedContents;
         // Message IDs are the Timestamps first 13 digits
-        public string? ThreadId => ThreadDate?.Replace(".", "")[..13] ?? Date.Replace(".", "")[..13];
-
-        #endregion
-        #region Constructors
-
-        public SlackMessage(SlackUser? user, string date, string? threadDate, string text, List<SlackAttachment>? attachments, List<SlackUser>? mentions, List<SlackReaction>? reactions, List<SlackHostedContent>? hostedContents) {
-            User = user;
-            Date = date;
-            ThreadDate = threadDate;
-            Text = text;
-            Attachments = attachments;
-            Mentions = mentions;
-            Reactions = reactions;
-            HostedContents = hostedContents;
-
-            IsInThread = !string.IsNullOrEmpty(threadDate);
-            IsParentThread = IsInThread && ThreadDate == Date;
-        }
+        public string? ThreadId => ThreadDate?.Replace(".", "")[..13] ?? Date?.Replace(".", "")[..13];
 
         #endregion
         #region Method - AttachmentsMessage
@@ -230,6 +222,20 @@ namespace SlackToTeams.Models {
             }
 
             return formattedText.ToString();
+        }
+
+        #endregion
+        #region Method - CheckIsInThread
+
+        private static bool CheckIsInThread(string? threadDate) {
+            return !string.IsNullOrEmpty(threadDate);
+        }
+
+        #endregion
+        #region Method - CheckIsInThread
+
+        private static bool CheckIsParentThread(string? date, string? threadDate) {
+            return CheckIsInThread(threadDate) && threadDate == date;
         }
 
         #endregion

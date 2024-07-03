@@ -2,10 +2,15 @@
 // Licensed under the MIT License.
 
 using Microsoft.Graph.Models;
-using Newtonsoft.Json;
 
 namespace SlackToTeams.Models {
-    public class SlackUser {
+    public class SlackUser(
+        string? slackUserID,
+        string? teamsUserID,
+        string? displayName,
+        string? email,
+        bool isBot
+    ) {
         #region Fields
 
         public static readonly SlackUser SLACK_BOT = BotUser(SLACK_BOT_ID, SLACK_BOT_NAME);
@@ -22,32 +27,26 @@ namespace SlackToTeams.Models {
         #endregion
         #region Properties
 
-        public string DisplayName { get; private set; }
-        public string? Email { get; private set; }
-        public string SlackUserId { get; private set; }
-        public string TeamsUserId { get; private set; }
-        public bool IsBot { get; set; } = false;
-
-        #endregion
-        #region Constructors
-
-        [JsonConstructor]
-        public SlackUser(string? slackUserID, string? teamsUserID, string? displayName, string? email, bool isBot) {
-            SlackUserId = slackUserID ?? SLACK_BOT_ID;
-            TeamsUserId = teamsUserID ?? string.Empty;
-            DisplayName = displayName ?? UNKNOWN_NAME;
-            Email = email;
-            IsBot = isBot;
-        }
-
-        public SlackUser(string? slackUserID, string? displayName, string? email, bool isBot) : this(slackUserID, string.Empty, displayName, email, isBot) {
-        }
+        public string DisplayName { get; private set; } = displayName ?? UNKNOWN_NAME;
+        public string? Email { get; private set; } = email;
+        public string SlackUserId { get; private set; } = slackUserID ?? SLACK_BOT_ID;
+        public string TeamsUserId { get; private set; } = teamsUserID ?? string.Empty;
+        public bool IsBot { get; set; } = isBot;
 
         #endregion
         #region Method - BotUser
 
-        public static SlackUser BotUser(string? slackUserID, string? displayName) {
-            return new SlackUser(slackUserID, displayName, string.Empty, true);
+        public static SlackUser BotUser(
+            string? slackUserID,
+            string? displayName
+        ) {
+            return new SlackUser(
+                slackUserID,    // slackUserID
+                null,           // teamsUserID
+                displayName,    // displayName
+                string.Empty,   // email
+                true            // isBot
+            );
         }
 
         #endregion

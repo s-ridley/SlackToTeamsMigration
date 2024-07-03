@@ -1,54 +1,39 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using System.Globalization;
-using System.Runtime.Serialization;
+using System.Text.Json.Serialization;
 
 namespace SlackToTeams.Models {
-    [DataContract]
-    [JsonObject(MemberSerialization = MemberSerialization.OptIn)]
-    public class SlackChannel {
+    [method: JsonConstructor]
+    public class SlackChannel(
+        string? displayName,
+        string? description,
+        DateTime? createdDateTime,
+        bool? isArchived,
+        string? slackId,
+        string? slackCreatorId
+    ) {
         #region Properties
 
-        [DataMember(IsRequired = true, Name = "displayName"), JsonProperty]
-        public string DisplayName { get; set; }
-
-        [DataMember(IsRequired = false, Name = "description"), JsonProperty]
-        public string Description { get; set; } = "";
-
-        [DataMember(IsRequired = false, Name = "createdDateTime"),
-            JsonProperty,
-            JsonConverter(typeof(IsoDateTimeConverter))]
-        public DateTime CreatedDateTime { get; set; } = DateTime.UtcNow;
-
-        [DataMember(IsRequired = true, Name = "membershipType"), JsonProperty]
-        public string MembershipType { get; set; } = "standard";
-
-        public bool IsArchived { get; set; } = false;
-
-        public string? SlackId { get; set; }
-
-        public string? SlackCreatorId { get; set; }
-
-        public string? SlackFolder { get; set; }
+        public string? DisplayName { get; set; } = FormatDisplayName(displayName);
+        public string? Description { get; set; } = description;
+        public DateTime? CreatedDateTime { get; set; } = createdDateTime;
+        public string? MembershipType { get; set; } = "standard";
+        public bool? IsArchived { get; set; } = isArchived;
+        public string? SlackId { get; set; } = slackId;
+        public string? SlackCreatorId { get; set; } = slackCreatorId;
+        public string? SlackFolder { get; set; } = displayName;
 
         #endregion
-        #region Constructors
+        #region Method - FormatDisplayName
 
-        public SlackChannel(string displayName, string description, DateTime createdDateTime, bool isArchived, string? slackId, string? slackCreatorId) {
-            DisplayName = displayName;
-
-            TextInfo currentTextInfo = CultureInfo.CurrentCulture.TextInfo;
-            DisplayName = currentTextInfo.ToTitleCase(DisplayName);
-
-            Description = description;
-            CreatedDateTime = createdDateTime;
-            IsArchived = isArchived;
-            SlackId = slackId;
-            SlackCreatorId = slackCreatorId;
-            SlackFolder = displayName;
+        private static string FormatDisplayName(string? name) {
+            string result = string.Empty;
+            if (!string.IsNullOrEmpty(name)) {
+                result = CultureInfo.CurrentCulture.TextInfo.ToTitleCase(name);
+            }
+            return result;
         }
 
         #endregion

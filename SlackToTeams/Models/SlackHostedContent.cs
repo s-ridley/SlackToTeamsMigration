@@ -1,25 +1,13 @@
 ﻿using Microsoft.Graph.Models;
-using Newtonsoft.Json;
 
 namespace SlackToTeams.Models {
-    public class SlackHostedContent {
+    public class SlackHostedContent(byte[] contentBytes, string? contentType, int? height, int? width) {
         #region Properties
 
-        public byte[]? ContentBytes { get; private set; }
-        public string? ContentType { get; private set; }
-        public int? Width { get; set; }
-        public int? Height { get; set; }
-
-        #endregion
-        #region Constructors
-
-        [JsonConstructor]
-        public SlackHostedContent(byte[] contentBytes, string? contentType, int? height, int? width) {
-            ContentBytes = contentBytes;
-            ContentType = contentType;
-            Height = height;
-            Width = width;
-        }
+        public byte[]? ContentBytes { get; private set; } = contentBytes;
+        public string? ContentType { get; private set; } = contentType;
+        public int? Width { get; set; } = width;
+        public int? Height { get; set; } = height;
 
         #endregion
         #region Method - ToChatMessageReaction

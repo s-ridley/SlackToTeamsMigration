@@ -1,14 +1,21 @@
 ﻿// Copyright (c) Isak Viste. All rights reserved.
 // Licensed under the MIT License.
 
-using System.Diagnostics.Eventing.Reader;
 using System.Net;
 using Microsoft.Graph.Models;
 using Serilog;
 using SlackToTeams.Utils;
 
 namespace SlackToTeams.Models {
-    public partial class SlackAttachment {
+    public partial class SlackAttachment(
+        string? slackUrl,
+        string? name,
+        string? title,
+        string? fileType,
+        string? mimeType,
+        long? size,
+        DateTimeOffset? date
+    ) {
         #region Fields
 
         private static readonly ILogger s_logger = Log.ForContext(typeof(SlackAttachment));
@@ -16,51 +23,34 @@ namespace SlackToTeams.Models {
         #endregion
         #region Properties
 
-        public string? Id { get; set; }
-        public string? SlackURL { get; set; }
-        public string? Name { get; set; }
+        public string? Id { get; set; } = string.Empty;
+        public string? SlackURL { get; set; } = slackUrl;
+        public string? Name { get; set; } = FormatDisplayName(ConvertHelper.FileSystemSafe(name), date);
         public string? DisplayName { get; set; }
-        public string? Title { get; set; }
-        public string? FileType { get; set; }
-        public long? Size { get; set; }
+        public string? Title { get; set; } = title;
+        public string? FileType { get; set; } = fileType;
+        public long? Size { get; set; } = size;
         public int? Width { get; set; }
         public int? Height { get; set; }
-        public DateTimeOffset? Date { get; set; }
+        public DateTimeOffset? Date { get; set; } = date;
         public string? Content { get; private set; }
         public byte[]? ContentBytes { get; private set; }
-        public string? MimeType { get; set; }
-        public string? ContentURL { get; set; }
+        public string? MimeType { get; set; } = mimeType;
+        public string? ContentURL { get; set; } = string.Empty;
         public string? ThumbnailUrl { get; set; }
         public bool FileMissing { get; private set; } = false;
 
         #endregion
-        #region Constructors
-
-        public SlackAttachment(string? slackUrl, string? name, string? title, string? fileType, string? mimeType, long? size, DateTimeOffset? date) {
-            SlackURL = slackUrl;
-            Name = ConvertHelper.FileSystemSafe(name);
-            Title = title;
-            FileType = fileType;
-            MimeType = mimeType;
-            Size = size;
-            Date = date;
-            ContentURL = string.Empty;
-            Id = string.Empty;
-
-            Name = FormatDisplayName();
-        }
-
-        #endregion
         #region Method - FormatDisplayName
 
-        private string FormatDisplayName() {
+        private static string FormatDisplayName(string? name, DateTimeOffset? date) {
             string result = string.Empty;
 
-            if (!string.IsNullOrEmpty(Name)) {
+            if (!string.IsNullOrEmpty(name)) {
                 string timeString = string.Empty;
 
-                if (Date != null) {
-                    DateTime dateTime = Date.Value.LocalDateTime;
+                if (date != null) {
+                    DateTime dateTime = date.Value.LocalDateTime;
                     timeString = $"{dateTime:s}";
 
                 }
@@ -68,9 +58,9 @@ namespace SlackToTeams.Models {
                 if (!string.IsNullOrEmpty(timeString)) {
                     timeString = timeString.Replace(":", "_");
                     timeString = timeString.Replace("-", "_");
-                    result = $"{timeString}_{Name}";
+                    result = $"{timeString}_{name}";
                 } else {
-                    result = Name;
+                    result = name;
                 }
             }
 
